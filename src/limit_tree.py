@@ -10,9 +10,6 @@ class LimitTree:
         self.is_bid_tree = is_bid_tree
 
     def insert_limit(self, price):
-        price = int(price * PRICE_MULTIPLIER)
-        price = round(price / TICK_MULTIPLIER) * TICK_MULTIPLIER
-
         if price in self.limit_map:
             return self.limit_map[price]
 
@@ -53,9 +50,6 @@ class LimitTree:
         return limit
 
     def remove_limit(self, price):
-        price = int(price * PRICE_MULTIPLIER)
-        price = round(price / TICK_MULTIPLIER) * TICK_MULTIPLIER
-        
         if price not in self.limit_map:
             return
         

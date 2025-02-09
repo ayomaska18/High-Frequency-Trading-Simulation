@@ -37,3 +37,9 @@ class Limit:
     
     def get_total_vol(self):
         return self.total_volume
+    
+    def iter_orders(self):
+        current = self.order_head
+        while current:
+            yield current
+            current = current.next 
