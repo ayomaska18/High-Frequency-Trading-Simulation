@@ -10,11 +10,6 @@ import plotly.graph_objects as go
 from src.setting import *
 from src.trader import Trader
 
-MIN_PRICE = 99.0
-MAX_PRICE = 101.0
-TICK_SIZE = 0.0001
-ORDERS_PER_SECOND = 5 
-
 # Initialize the order book
 order_book = OrderBook()
 
@@ -49,8 +44,23 @@ def main():
     # Create multiple traders with different strategies
     traders = [
         Trader(trader_id=1, order_book=order_book, strategy="random"),
-        # Trader(trader_id=2, order_book=order_book, strategy="market_maker"), # to be fixed
-        # Trader(trader_id=3, order_book=order_book, strategy="aggressive_taker") # to be fixed
+        Trader(trader_id=2, order_book=order_book, strategy="market_maker"),
+        Trader(trader_id=3, order_book=order_book, strategy="market_maker"),
+        Trader(trader_id=4, order_book=order_book, strategy="market_maker"),
+        Trader(trader_id=5, order_book=order_book, strategy="market_maker"),
+        Trader(trader_id=6, order_book=order_book, strategy="market_maker"),
+        Trader(trader_id=7, order_book=order_book, strategy="market_maker"),
+        Trader(trader_id=8, order_book=order_book, strategy="market_maker"),
+        Trader(trader_id=9, order_book=order_book, strategy="market_maker"),
+        Trader(trader_id=10, order_book=order_book, strategy="market_maker"),
+        Trader(trader_id=11, order_book=order_book, strategy="random"),
+        Trader(trader_id=12, order_book=order_book, strategy="random"),
+        Trader(trader_id=13, order_book=order_book, strategy="random"),
+        Trader(trader_id=14, order_book=order_book, strategy="random"),
+        Trader(trader_id=15, order_book=order_book, strategy="random"),
+        Trader(trader_id=16, order_book=order_book, strategy="random"),
+        Trader(trader_id=17, order_book=order_book, strategy="random")
+        
     ]
 
     # Start each trader in a separate thread

@@ -3,12 +3,10 @@ from src.ask import Ask
 from src.bid import Bid
 from src.order import Order
 from src.setting import *
-from src.utility import enforce_tick_size
+from src.utility import enforce_tick_size, convert_to_price
 import time
 import random
 from IPython.display import display
-
-fig = go.Figure()
 
 class OrderBook:
     def __init__(self):
@@ -43,10 +41,10 @@ class OrderBook:
         
 
     def get_best_bid(self):
-        return self.bid_tree.best_limit
+        return convert_to_price(self.bid_tree.best_limit)
 
     def get_best_ask(self):
-        return self.ask_tree.best_limit
+        return convert_to_price(self.ask_tree.best_limit)
     
     def display_order_book(self):
         print("\n" + "="*50)
