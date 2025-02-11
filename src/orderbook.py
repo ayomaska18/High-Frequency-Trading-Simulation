@@ -4,10 +4,11 @@ from src.bid import Bid
 from src.order import Order
 from src.setting import *
 from src.utility import enforce_tick_size
-import matplotlib.pyplot as plt
 import time
 import random
+from IPython.display import display
 
+fig = go.Figure()
 
 class OrderBook:
     def __init__(self):
@@ -163,55 +164,78 @@ class OrderBook:
         
         return "Order Filled"
     
-    def plot_order_book(self):
-        bid_prices = []
-        bid_volumes = []
-        ask_prices = []
-        ask_volumes = []
+    # def plot_order_book(self):
+    #     """ Plots the order book using Plotly and opens in a browser. """
 
-        # Extract bids
-        for price, limit in self.bid_tree.limit_map.items():
-            price_decimal = price / 10**8  # Convert back to decimal
-            if MIN_PRICE <= price_decimal <= MAX_PRICE:
-                bid_prices.append(price_decimal)
-                bid_volumes.append(sum(order.vol for order in limit.iter_orders()))
+    #     bid_prices = []
+    #     bid_volumes = []
+    #     ask_prices = []
+    #     ask_volumes = []
 
-        # Extract asks
-        for price, limit in self.ask_tree.limit_map.items():
-            price_decimal = price / 10**8  # Convert back to decimal
-            if MIN_PRICE <= price_decimal <= MAX_PRICE: 
-                ask_prices.append(price_decimal)
-                ask_volumes.append(sum(order.vol for order in limit.iter_orders()))
+    #     # Extract bids
+    #     for price, limit in self.bid_tree.limit_map.items():
+    #         price_decimal = price / 10**8
+    #         bid_prices.append(price_decimal)
+    #         bid_volumes.append(sum(order.vol for order in limit.iter_orders()))
 
-        plt.clf()  # Clear the previous frame
-        plt.bar(bid_prices, bid_volumes, width=TICK_SIZE, color='green', label='Bids', alpha=0.6)
-        plt.bar(ask_prices, ask_volumes, width=TICK_SIZE, color='red', label='Asks', alpha=0.6)
-        plt.xlim(MIN_PRICE, MAX_PRICE)  
-        plt.xlabel("Price")
-        plt.ylabel("Volume")
-        plt.title("Live Order Book")
-        plt.legend()
-        plt.pause(0.1)  # Update rate
+    #     # Extract asks
+    #     for price, limit in self.ask_tree.limit_map.items():
+    #         price_decimal = price / 10**8
+    #         ask_prices.append(price_decimal)
+    #         ask_volumes.append(sum(order.vol for order in limit.iter_orders()))
 
-    def live_order_book(self):
-        plt.ion()  # Turn on interactive mode
+    #     fig = go.Figure()
+    #     fig.add_trace(go.Bar(x=bid_prices, y=bid_volumes, name="Bids", marker_color="green"))
+    #     fig.add_trace(go.Bar(x=ask_prices, y=ask_volumes, name="Asks", marker_color="red"))
 
-        while True:
-            self.plot_order_book() 
+    #     fig.update_layout(title="Live Order Book", xaxis_title="Price", yaxis_title="Volume")
+    #     fig.show()  # ✅ Opens in browser
 
-            # Simulate adding random orders within the fixed range
-            side = random.choice(["buy", "sell"])
-            price = round(random.uniform(MIN_PRICE, MAX_PRICE), 4) 
-            volume = random.randint(1, 10)
 
-            is_buy = side == "buy"
-            order = Order(
-                id=int(time.time()),  # Unique ID
-                is_buy=is_buy,
-                price=price,
-                vol=volume,
-                timestamp=time.time(),
-            )
+    # def live_order_book(self):
+    #     """ Continuously updates the order book visualization in the same figure. """
 
-            self.limit_order_match(order)
-            time.sleep(1)  # Update every second
+    #     display(fig)  # Show the figure once
+
+    #     while True:
+    #         self.plot_order_book()
+
+    #         # Simulate adding random orders
+    #         side = random.choice(["buy", "sell"])
+    #         price = round(random.uniform(MIN_PRICE, MAX_PRICE), 4)
+    #         volume = random.randint(1, 10)
+
+    #         is_buy = side == "buy"
+    #         order = Order(
+    #             id=int(time.time()),
+    #             is_buy=is_buy,
+    #             price=price,
+    #             vol=volume,
+    #             timestamp=time.time(),
+    #         )
+
+    #         self.limit_order_match(order)
+    #         time.sleep(1)  # Update every second
+
+    def initialize_order_book(self):
+        """ Populates the order book with pre-existing limit orders. """
+        num_levels = 10
+        base_bid_price = 99.5
+        base_ask_price = 100.5
+
+        for i in range(num_levels):
+            bid_price = round(base_bid_price - (i * 0.01), 2)
+            ask_price = round(base_ask_price + (i * 0.01), 2)
+
+            bid_vol = random.randint(5, 20)
+            ask_vol = random.randint(5, 20)
+
+            bid_order = Order(id=i, is_buy=True, price=bid_price, vol=bid_vol, timestamp=time.time())
+            ask_order = Order(id=i + num_levels, is_buy=False, price=ask_price, vol=ask_vol, timestamp=time.time())
+
+            self.limit_order_match(bid_order)
+            self.limit_order_match(ask_order)
+
+            print(f"Pre-filled: BUY {bid_vol} @ {bid_price} | SELL {ask_vol} @ {ask_price}")
+
+        print("\n Order book initialized with pre-existing orders!\n")

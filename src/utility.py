@@ -1,5 +1,4 @@
 from src.setting import *
-import matplotlib.pyplot as plt
 import time
 
 def enforce_tick_size(price):
