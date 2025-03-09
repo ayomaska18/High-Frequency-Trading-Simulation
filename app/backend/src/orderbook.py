@@ -1,12 +1,17 @@
-from src.limit_tree import LimitTree
-from src.ask import Ask
-from src.bid import Bid
-from src.order import Order
-from src.setting import *
-from src.utility import enforce_tick_size, convert_to_price
+from .limit_tree import LimitTree
+from .ask import Ask
+from .bid import Bid
+from .order import Order
+from .setting import *
+from .utility import enforce_tick_size, convert_to_price
 import time
 import random
+import requests
+import os
 from IPython.display import display
+from dotenv import load_dotenv
+
+load_dotenv()
 
 class OrderBook:
     def __init__(self):
@@ -36,7 +41,7 @@ class OrderBook:
 
         del self.order_map[order_id]
 
-        if not limit.order_head:  # Remove price level if no orders left
+        if not limit.order_head: 
             limit_tree.remove_limit(price)
         
 
@@ -83,27 +88,32 @@ class OrderBook:
         
         while limit_tree.limit_map and order.vol > 0:
             best_limit = limit_tree.get_best_limit()
+            print("best_limit", best_limit)
 
             if not best_limit:
                 print("Insufficient Liquidity to fill order")
-                return
+                return order.vol    
 
             limit = limit_tree.limit_map[best_limit]
+            print('limit:', limit)
 
             while limit.order_head and order.vol > 0: # current price level orders
                 head_order = limit.order_head
                 trade_quantity = min(order.vol, head_order.vol)
-
-                if order.is_buy:
-                    print(f"Market Order Buy: {trade_quantity} @ {best_limit}")
-                else:
-                    print(f"Market Order Sell: {trade_quantity} @ {best_limit}")
+                
+                if trade_quantity < 1e-8:
+                    # Force volumes to zero or break
+                    print("[Warning] trade_quantity is extremely small, breaking to avoid infinite loop.")
+                    order.vol = 0
+                    head_order.vol = 0
+                    break
 
                 order.vol -= trade_quantity
                 head_order.vol -= trade_quantity
 
                 if head_order.vol == 0:
                     self.cancel_order(head_order.id)
+                print('trade_quantity', trade_quantity)
                 
             if not limit.order_head:
                 limit_tree.remove_limit(best_limit)
@@ -111,9 +121,9 @@ class OrderBook:
         
         if not limit_tree.limit_map and order.vol:
             print("Insufficient Liquidity to fill order")
-            return
+            return order.vol
         
-        return "Order Filled"
+        return 0
             
     def limit_order_match(self, order):
         """ 
@@ -137,7 +147,7 @@ class OrderBook:
             limit = limit_tree.limit_map[price]
         else:
             self.add_order(order)
-            return "Price not in order book. Order added to order book."
+            return order.vol
         
         while limit.order_head and order.vol > 0:
             head_order = limit.order_head
@@ -158,82 +168,96 @@ class OrderBook:
         if order.vol > 0:
             self.add_order(order) 
             print('Order filled partially')
-            return       
+            return order.vol
         
-        return "Order Filled"
+        return 0
+
+    def get_curent_order_book_snapshot(self):
+        api_key = os.getenv("COINAPI_API_KEY")
+        url = "https://rest.coinapi.io/v1/orderbooks/BINANCE_SPOT_BTC_USDT/current"
+        payload = {}
+        headers = {
+            'Accept': 'text/plain',
+            'X-CoinAPI-Key': api_key
+                  }
+        response = requests.request("GET", url, headers=headers, data=payload)
+
+        if response.status_code != 200:
+            return "Error fetching order book snapshot"
+        
+        data = response.json()
     
-    # def plot_order_book(self):
-    #     """ Plots the order book using Plotly and opens in a browser. """
+        bids, asks = data['bids'], data['asks']
 
-    #     bid_prices = []
-    #     bid_volumes = []
-    #     ask_prices = []
-    #     ask_volumes = []
+        return bids, asks
 
-    #     # Extract bids
-    #     for price, limit in self.bid_tree.limit_map.items():
-    #         price_decimal = price / 10**8
-    #         bid_prices.append(price_decimal)
-    #         bid_volumes.append(sum(order.vol for order in limit.iter_orders()))
-
-    #     # Extract asks
-    #     for price, limit in self.ask_tree.limit_map.items():
-    #         price_decimal = price / 10**8
-    #         ask_prices.append(price_decimal)
-    #         ask_volumes.append(sum(order.vol for order in limit.iter_orders()))
-
-    #     fig = go.Figure()
-    #     fig.add_trace(go.Bar(x=bid_prices, y=bid_volumes, name="Bids", marker_color="green"))
-    #     fig.add_trace(go.Bar(x=ask_prices, y=ask_volumes, name="Asks", marker_color="red"))
-
-    #     fig.update_layout(title="Live Order Book", xaxis_title="Price", yaxis_title="Volume")
-    #     fig.show()  # ✅ Opens in browser
-
-
-    # def live_order_book(self):
-    #     """ Continuously updates the order book visualization in the same figure. """
-
-    #     display(fig)  # Show the figure once
-
-    #     while True:
-    #         self.plot_order_book()
-
-    #         # Simulate adding random orders
-    #         side = random.choice(["buy", "sell"])
-    #         price = round(random.uniform(MIN_PRICE, MAX_PRICE), 4)
-    #         volume = random.randint(1, 10)
-
-    #         is_buy = side == "buy"
-    #         order = Order(
-    #             id=int(time.time()),
-    #             is_buy=is_buy,
-    #             price=price,
-    #             vol=volume,
-    #             timestamp=time.time(),
-    #         )
-
-    #         self.limit_order_match(order)
-    #         time.sleep(1)  # Update every second
 
     def initialize_order_book(self):
-        """ Populates the order book with pre-existing limit orders. """
-        num_levels = 10
-        base_bid_price = 99.5
-        base_ask_price = 100.5
+        """ Populates the order book with a fair price of 100 and random volume levels. """
+        bids, asks = self.get_curent_order_book_snapshot()
 
-        for i in range(num_levels):
-            bid_price = round(base_bid_price - (i * 0.01), 2)
-            ask_price = round(base_ask_price + (i * 0.01), 2)
+        for i, bid in enumerate(bids):
+            bid_price = bid["price"]
+            bid_vol = bid["size"]
 
-            bid_vol = random.randint(5, 20)
-            ask_vol = random.randint(5, 20)
+            bid_order = Order(
+                id=i,
+                asset="BTC",
+                is_buy=True,
+                price=bid_price,
+                vol=bid_vol,
+                timestamp=time.time()
+            )
 
-            bid_order = Order(id=i, is_buy=True, price=bid_price, vol=bid_vol, timestamp=time.time())
-            ask_order = Order(id=i + num_levels, is_buy=False, price=ask_price, vol=ask_vol, timestamp=time.time())
+            self.add_order(bid_order)
+            print(f"Order Added: BUY {bid_vol} @ {bid_price}")
 
-            self.limit_order_match(bid_order)
-            self.limit_order_match(ask_order)
+        offset = len(bids) 
+        for j, ask in enumerate(asks):
+            ask_price = ask["price"]
+            ask_vol = ask["size"]
 
-            print(f"Pre-filled: BUY {bid_vol} @ {bid_price} | SELL {ask_vol} @ {ask_price}")
+            ask_order = Order(
+                id=offset + j,
+                asset="BTC",
+                is_buy=False,
+                price=ask_price,
+                vol=ask_vol,
+                timestamp=time.time()
+            )
+            
+            self.add_order(ask_order)
+            print(f"Order Added: SELL {ask_vol} @ {ask_price}")
 
-        print("\n Order book initialized with pre-existing orders!\n")
+        print("\nOrder book initialized from snapshot!\n")
+
+    def fetch_order_book(self):
+        bids_limit_map_copy = list(self.bid_tree.limit_map.items())
+        asks_limit_map_copy = list(self.ask_tree.limit_map.items())
+
+        bids = []
+        asks = []
+
+        for price, limit in bids_limit_map_copy:
+            price_decimal = round(price / 10**8, 4)
+            total_volume = sum(order.vol for order in limit.iter_orders())
+            if total_volume > 0:
+                bids.append([price_decimal, total_volume])
+
+        for price, limit in asks_limit_map_copy:
+            price_decimal = round(price / 10**8, 4)
+            total_volume = sum(order.vol for order in limit.iter_orders())
+            if total_volume > 0:
+                asks.append([price_decimal, total_volume])
+
+        bids.sort(key=lambda x: x[0], reverse=True)
+        asks.sort(key=lambda x: x[0])
+
+        print(bids)
+        print(asks)
+        
+        return {"bids": bids, "asks": asks}
+
+
+order_book = OrderBook()
+order_book.initialize_order_book()

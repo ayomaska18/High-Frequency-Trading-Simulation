@@ -1,3 +1,6 @@
 venv/
-__pyache__
-src/__pycache__
+app/backend/__pyache__
+app/backend/routers/__pycache__
+app/frontend/node_modules/
+app/frontend/package-lock.json
+app/frontend/package.json

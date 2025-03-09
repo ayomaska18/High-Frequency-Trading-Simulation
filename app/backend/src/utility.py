@@ -1,4 +1,4 @@
-from src.setting import *
+from .setting import *
 import time
 
 def enforce_tick_size(price):

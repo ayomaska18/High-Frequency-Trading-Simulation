@@ -1,5 +1,5 @@
-from src.limit import Limit
-from src.setting import *
+from .limit import Limit
+from .setting import *
 
 class LimitTree:
     def __init__(self, is_bid_tree):

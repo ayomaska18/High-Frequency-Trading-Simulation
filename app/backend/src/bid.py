@@ -1,4 +1,4 @@
-from src.limit_tree import LimitTree
+from .limit_tree import LimitTree
 
 class Bid(LimitTree):
     def __init__(self):

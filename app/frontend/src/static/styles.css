@@ -1,0 +1,38 @@
+.app {
+    display: flex;
+    flex-direction: row;
+    background-color: #121212;
+    color: white;
+    padding: 10px;
+}
+
+.orderbook-list {
+    height: 400px;  /* Set fixed height */
+    overflow-y: auto;  /* Enable vertical scrolling */
+    overflow-x: hidden;
+    border-top: 1px solid #ddd;
+    border-bottom: 1px solid #ddd;
+}
+
+.chart-container {
+    width: 60%;
+}
+
+.bid .price {
+    color: green;
+}
+
+.ask .price {
+    color: red;
+}
+
+table {
+    width: 100%;
+    border-collapse: collapse;
+}
+
+th, td {
+    padding: 8px;
+    text-align: right;
+    border-bottom: 1px solid #ddd;
+}

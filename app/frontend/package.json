@@ -1,0 +1,28 @@
+{
+  "dependencies": {
+    "@orderly.network/react": "^1.5.17",
+    "axios": "^1.8.2",
+    "react": "^19.0.0",
+    "react-dom": "^19.0.0",
+    "react-scripts": "^5.0.1",
+    "socket.io-client": "^4.8.1"
+  },
+  "scripts": {
+    "start": "react-scripts start --no-warning",
+    "build": "react-scripts build --no-warning",
+    "test": "react-scripts test",
+    "eject": "react-scripts eject"
+  },
+  "browserslist": {
+    "production": [
+      ">0.2%",
+      "not dead",
+      "not op_mini all"
+    ],
+    "development": [
+      "last 1 chrome version",
+      "last 1 firefox version",
+      "last 1 safari version"
+    ]
+  }
+}

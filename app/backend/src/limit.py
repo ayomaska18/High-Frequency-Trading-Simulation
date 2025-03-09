@@ -1,4 +1,4 @@
-from src.order import Order
+from .order import Order
 
 class Limit:
     def __init__(self, price):
