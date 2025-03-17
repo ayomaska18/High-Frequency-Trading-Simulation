@@ -8,3 +8,4 @@ app/frontend/package-lock.json
 app/frontend/package.json
 package-lock.json
 package.json
+.env
