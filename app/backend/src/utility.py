@@ -2,7 +2,7 @@ from .setting import *
 import time
 
 def enforce_tick_size(price):
-    price_int = int(price * PRICE_MULTIPLIER)  # Convert to integer precision
+    price_int = int(price * PRICE_MULTIPLIER)
     rounded_price = round(price_int / TICK_MULTIPLIER) * TICK_MULTIPLIER
     return rounded_price
 

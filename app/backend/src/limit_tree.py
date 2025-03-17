@@ -57,14 +57,14 @@ class LimitTree:
 
         del self.limit_map[price]
 
-        if limit.left and limit.right: # if both left and right children exist
-            successor = limit.right # find the inorder successor
+        if limit.left and limit.right:
+            successor = limit.right 
             while successor.left:
                 successor = successor.left
-            limit.price = successor.price # copy the successor's data to this node
+            limit.price = successor.price 
             limit.order_head = successor.order_head
             limit.order_tail = successor.order_tail
-            self.remove_limit(successor.price) # delete the successor
+            self.remove_limit(successor.price) 
         elif limit.left or limit.right:
             child = limit.left if limit.left else limit.right
             if limit == self.root:
@@ -88,16 +88,16 @@ class LimitTree:
     def update_best_worst_price(self, price):
         curr = self.root
 
-        if not self.is_bid_tree: # ask tree
-            if price == self.best_limit: # previous best price was removed
+        if not self.is_bid_tree:
+            if price == self.best_limit:
                 while curr.left:
                     curr = curr.left
                 self.best_limit = curr.price
-            else:  # previous worst price was removed
+            else:
                 while curr.right:
                     curr = curr.right
                 self.worst_limit = curr.price
-        else: # bid tree
+        else: 
             if price == self.best_limit:
                 while curr.right:
                     curr = curr.right
@@ -106,9 +106,77 @@ class LimitTree:
                 while curr.left:
                     curr = curr.left
                 self.worst_limit = curr.price
+            
     
     def get_best_limit(self):
         return self.best_limit
     
     def get_worst_limit(self):
         return self.worst_limit
+
+def print_tree_info(title, tree: LimitTree):
+    print(f"--- {title} ---")
+    if tree.root is None:
+        print("Tree is empty.")
+    else:
+        best = tree.get_best_limit()
+        worst = tree.get_worst_limit()
+        print(f"Best limit: {best}")
+        print(f"Worst limit: {worst}")
+
+    print(f"Tree limit_map keys: {list(tree.limit_map.keys())}\n")
+
+
+def test_bid_tree_operations():
+    bid_tree = LimitTree(is_bid_tree=True)
+    prices_to_insert = [100, 105, 95, 99, 107, 93, 101]
+    
+    for price in prices_to_insert:
+        bid_tree.insert_limit(price)
+        print_tree_info(f"After inserting {price}", bid_tree)
+    
+    node_to_remove = 93
+    bid_tree.remove_limit(node_to_remove)
+    print_tree_info(f"After removing leaf node {node_to_remove}", bid_tree)
+
+    node_to_remove = 99
+    bid_tree.remove_limit(node_to_remove)
+    print_tree_info(f"After removing node {node_to_remove} (one child)", bid_tree)
+
+
+    node_to_remove = 100
+    bid_tree.remove_limit(node_to_remove)
+    print_tree_info(f"After removing node {node_to_remove} (two children)", bid_tree)
+
+    
+    node_to_remove = 107
+    bid_tree.remove_limit(node_to_remove)
+    print_tree_info(f"After removing node {node_to_remove} (two children)", bid_tree)
+
+
+def test_ask_tree_operations():
+    ask_tree = LimitTree(is_bid_tree=False)
+    prices_to_insert = [100, 95, 105, 99, 93, 107, 101]
+    
+    for price in prices_to_insert:
+        ask_tree.insert_limit(price)
+        print_tree_info(f"After inserting {price}", ask_tree)
+    
+    node_to_remove = 107
+    ask_tree.remove_limit(node_to_remove)
+    print_tree_info(f"After removing leaf node {node_to_remove}", ask_tree)
+
+    node_to_remove = 99
+    ask_tree.remove_limit(node_to_remove)
+    print_tree_info(f"After removing node {node_to_remove} (one child)", ask_tree)
+
+    node_to_remove = 100
+    ask_tree.remove_limit(node_to_remove)
+    print_tree_info(f"After removing node {node_to_remove} (two children)", ask_tree)
+
+if __name__ == "__main__":
+    test_bid_tree_operations()
+
+
+
+

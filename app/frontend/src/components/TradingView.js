@@ -1,30 +1,46 @@
-import React, { useEffect, useRef } from "react";
+import React, { useEffect, useRef, useState, useContext } from "react";
+import { AreaSeries, createChart } from 'lightweight-charts';
+import { WebSocketContext } from "./WebSocketContext";
 
-const TradingView = () => {
-    const chartContainer = useRef(null);
+const TradingChart = () => {
+    const chartContainerRef = useRef(null);
+    const [chart, setChart] = useState(null);
+    const [series, setSeries] = useState(null);
+    const [socket, setSocket] = useState(null);
+    const { midPrice } = useContext(WebSocketContext);
 
     useEffect(() => {
-        const script = document.createElement("script");
-        script.src = "https://s3.tradingview.com/tv.js";
-        script.async = true;
-        script.onload = () => {
-            new window.TradingView.widget({
-                container_id: "tradingview_chart",
-                symbol: "BINANCE:BTCUSDT",
-                interval: "1",
-                theme: "dark",
-                style: "1",
-                locale: "en",
-                autosize: true,
-            });
-        };
+        if (!chartContainerRef.current) return;
 
-        if (chartContainer.current) {
-            chartContainer.current.appendChild(script);
+        const chartOptions = {
+            width: 1190,
+            height: 522,
+            layout: { backgroundColor: "#000", textColor: "#black" },
+            grid: { vertLines: { color: "#333" }, horzLines: { color: "#333" } },
         }
+        const newChart = createChart(chartContainerRef.current, chartOptions);
+
+        const newSeries = newChart.addSeries(AreaSeries, { color: "#007bff" });
+
+        setChart(newChart);
+        setSeries(newSeries);
+
+        return () => newChart.remove();
     }, []);
 
-    return <div id="tradingview_chart" ref={chartContainer} style={{ height: "500px", width: "100%" }} />;
+    useEffect(() => {
+        if (series && midPrice) {
+            series.update({
+                time: Math.floor(Date.now() / 1000),
+                value: midPrice,
+            });
+        }
+    }, [midPrice]);
+
+    return (
+        <div className="chart-container" ref={chartContainerRef} />
+    );
+    
 };
 
-export default TradingView;
+export default TradingChart;

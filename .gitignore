@@ -4,3 +4,7 @@ app/backend/routers/__pycache__
 app/frontend/node_modules/
 app/frontend/package-lock.json
 app/frontend/package.json
+app/frontend/package-lock.json
+app/frontend/package.json
+package-lock.json
+package.json

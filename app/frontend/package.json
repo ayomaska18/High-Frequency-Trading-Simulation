@@ -1,7 +1,7 @@
 {
   "dependencies": {
-    "@orderly.network/react": "^1.5.17",
     "axios": "^1.8.2",
+    "lightweight-charts": "^5.0.3",
     "react": "^19.0.0",
     "react-dom": "^19.0.0",
     "react-scripts": "^5.0.1",

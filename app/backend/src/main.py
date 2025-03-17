@@ -1,53 +1,45 @@
-from .orderbook import order_book
-from .marketdatafeed import MarketDataFeed
-from .trader import BullTrader, BearTrader, MarketMaker
-import threading
-import uvicorn
+import asyncio
+from fastapi.middleware.cors import CORSMiddleware
 from fastapi import FastAPI, status
 from contextlib import asynccontextmanager
+from .orderbook import order_book
+from .trader import BullTrader, BearTrader, MarketMaker
 from .routers import orderbook
+from .routers import trader
+from .trader_manager import traderManager
 
-feed = MarketDataFeed()
-
-traders = [
-    BullTrader(trader_id=1, order_book=order_book, max_position=1),
-    BullTrader(trader_id=2, order_book=order_book, max_position=1),
-    BullTrader(trader_id=3, order_book=order_book, max_position=5),
-    BearTrader(trader_id=4, order_book=order_book, max_position=5),
-    BearTrader(trader_id=5, order_book=order_book, max_position=5),
-    BearTrader(trader_id=6, order_book=order_book, max_position=5),
-    MarketMaker(trader_id=7, order_book=order_book, max_position=15),
-]
-
-for trader in traders:
-    feed.subscribe(trader)
-
-def start_market_data_feed():
-    """ Run the market data feed in a separate thread. """
-    feed.run()
-
-def start_trader(trader):
-    """ Start trader in a separate thread. """
-    while True:
-        trader.on_market_data(order_book.get_best_bid()) 
-
-def run_background_tasks():
-    """Start market data feed and traders in background threads."""
-    feed_thread = threading.Thread(target=start_market_data_feed, daemon=True)
-    feed_thread.start()
+async def add_initial_traders():
+    initial_traders = [
+        BullTrader(trader_id=1, order_book=order_book, max_position=15),
+        BearTrader(trader_id=2, order_book=order_book, max_position=15),
+        MarketMaker(trader_id=3, order_book=order_book, max_position=15)
+    ]
+    for t in initial_traders:
+        await traderManager.add_trader(t)
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    """Startup and shutdown tasks"""
-    run_background_tasks()  
+    await add_initial_traders()
+    await traderManager.start() 
     yield
-    print("Shutting down...")  
+    await traderManager.stop()
+    print("Shutting down...")
 
 app = FastAPI(lifespan=lifespan)
 
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
+
 app.include_router(orderbook.router)
+app.include_router(trader.router)
+
+traders = []
 
 @app.get("/", status_code=status.HTTP_201_CREATED)
 def root():
-    print('hello')
-
+    return {"message": "Trading Engine Running"}

@@ -1,38 +1,44 @@
-.app {
+.app-container {
     display: flex;
-    flex-direction: row;
+    flex-direction: column;
+    align-items: center;
     background-color: #121212;
     color: white;
-    padding: 10px;
+    padding: 20px;
 }
 
-.orderbook-list {
-    height: 400px;  /* Set fixed height */
-    overflow-y: auto;  /* Enable vertical scrolling */
-    overflow-x: hidden;
-    border-top: 1px solid #ddd;
-    border-bottom: 1px solid #ddd;
+.title {
+    font-size: 24px;
+    font-weight: bold;
+    margin-bottom: 20px;
 }
 
-.chart-container {
-    width: 60%;
-}
-
-.bid .price {
-    color: green;
-}
-
-.ask .price {
-    color: red;
-}
-
-table {
+.main-content {
+    display: flex;
     width: 100%;
-    border-collapse: collapse;
+    justify-content: space-around;
 }
 
-th, td {
-    padding: 8px;
-    text-align: right;
-    border-bottom: 1px solid #ddd;
+.controls-container {
+    margin-top: 20px;
+    padding: 10px;
+    background-color: #222;
+    border-radius: 10px;
+    width: 80%;
+    text-align: center;
 }
+
+.control-group {
+    margin-bottom: 10px;
+}
+
+label {
+    margin-right: 10px;
+}
+
+.large-chart {
+    width: 70vw;
+    height: 500px;
+}
+
+

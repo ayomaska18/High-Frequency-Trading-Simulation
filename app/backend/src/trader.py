@@ -50,12 +50,12 @@ class Trader:
             return
 
         # If we are hitting position limits, skip placing the order
-        if is_buy and self.positions[asset] >= self.max_vol:
-            print(f"[Trader {self.trader_id}] Reached max long position, cannot buy more.")
-            return
-        if not is_buy and self.positions[asset] <= -self.max_vol:
-            print(f"[Trader {self.trader_id}] Reached max short position, cannot sell more.")
-            return
+        # if is_buy and self.positions[asset] >= self.max_vol:
+        #     print(f"[Trader {self.trader_id}] Reached max long position, cannot buy more.")
+        #     return
+        # if not is_buy and self.positions[asset] <= -self.max_vol:
+        #     print(f"[Trader {self.trader_id}] Reached max short position, cannot sell more.")
+        #     return
         
         id = int(time.time() * 1000)
 
@@ -102,16 +102,18 @@ class Trader:
             return
 
         # Same position-limit check
-        if is_buy and self.positions[asset] >= self.max_position:
-            print(f"[Trader {self.trader_id}] Reached max long position, cannot buy more (MARKET).")
-            return
-        if not is_buy and self.positions[asset] <= -self.max_position:
-            print(f"[Trader {self.trader_id}] Reached max short position, cannot sell more (MARKET).")
-            return
+        # if is_buy and self.positions[asset] >= self.max_position:
+        #     print(f"[Trader {self.trader_id}] Reached max long position, cannot buy more (MARKET).")
+        #     return
+        # if not is_buy and self.positions[asset] <= -self.max_position:
+        #     print(f"[Trader {self.trader_id}] Reached max short position, cannot sell more (MARKET).")
+        #     return
 
         # Get best available price from the order book
         best_price = (self.order_book.get_best_ask() if is_buy
                       else self.order_book.get_best_bid())
+        
+        print('current best price', best_price)
 
         if best_price is None:
             # No liquidity on the opposite side
@@ -162,7 +164,7 @@ class MarketMaker(Trader):
         self.base_spread = base_spread
         self.inv_coef = inventory_coefficient
 
-    def on_market_data(self, mid_price):
+    def trade(self):
         # Possibly skip 50% instead of 30%
         if random.random() < 0.5:
             return
@@ -170,28 +172,42 @@ class MarketMaker(Trader):
         best_ask_price = self.order_book.get_best_ask()
         best_bid_price = self.order_book.get_best_bid() 
 
-        current_inv = self.positions.get('BTC', 0.0)
-        inv_frac = abs(current_inv) / float(self.max_position)
+        if best_bid_price is None or best_ask_price is None:
+            return
 
-        dynamic_spread_pct = (self.base_spread
-                              + self.inv_coef*inv_frac
-                              )
+        spread = best_ask_price - best_bid_price
+        if spread <= 0:
+            # In case of malformed or crossed book
+            return
+        
+        mid_price = (best_ask_price + best_bid_price) / 2
+        
+        base_spread_abs = self.base_spread * mid_price
 
-        spread_abs = dynamic_spread_pct * mid_price
-        buy_price = best_ask_price - spread_abs/2
-        sell_price = best_bid_price + spread_abs/2
+        if spread > 2 * base_spread_abs:
+            # The market is wide, so we narrow our quotes. 
+            # Example: cut the existing spread in half.
+            dynamic_spread = spread / 2  
+        else:
+            # The market is already tight, so quote around our base spread. 
+            dynamic_spread = base_spread_abs
+        
 
-        volume = random.uniform(0.0005, 0.002)  # smaller volume
+        buy_price = best_ask_price - 0.01
+        sell_price = best_bid_price + 0.01
 
-        # If can still go more long
-        if current_inv < self.max_position:
-            self.place_limit_order('BTC', True, buy_price, volume)
-        # If can still go more short
-        if current_inv > -self.max_position:
-            self.place_limit_order('BTC', False, sell_price, volume)
+        if buy_price < sell_price:
+            return # prevent crossing
+
+        volume = random.uniform(0.001, 0.005)
+
+        # Place limit buy
+        self.place_limit_order('BTC', True, buy_price, volume)
+        # Place limit sell
+        self.place_limit_order('BTC', False, sell_price, volume)
 
         # If too many open orders
-        if len(self.open_orders) > 15:
+        if len(self.open_orders) > self.max_position:
             self.cancel_excess_orders()
 
 
@@ -272,96 +288,83 @@ class MarketMaker(Trader):
 class BullTrader(Trader):
     def __init__(self, trader_id, order_book, max_position=15, max_vol=1, buy_probability=0.8):
         super().__init__(trader_id, order_book, max_position, max_vol)
-        self.buy_probability = buy_probability  # chance of issuing a buy vs. a small partial sell
+        self.buy_probability = buy_probability 
 
-    def on_market_data(self, mid_price):
+    def trade(self):
         # Throttle or skip sometimes
         if random.random() > self.buy_probability:
             return
         best_ask_price = self.order_book.get_best_ask()
-        best_bid_price = self.order_book.get_best_bid()
 
-        volume = random.uniform(0.001, 0.01)
+        volume = random.uniform(0.01, 0.1)
 
-        self.cancel_excess_orders()
+        # self.cancel_excess_orders()
 
-        current_pos = self.positions.get('BTC', 0.0)
-        if current_pos >= self.max_vol:
-            self.place_market_order('BTC', False, volume)
-            print(f"reduce long position by {volume}, current position: {current_pos}")
-            return
-        
-        # Usually buy
-        if random.random() > self.buy_probability:
-            buy_price = best_ask_price
-            self.place_market_order('BTC', True, volume)
-            print(f"market buy {volume} BTC at {buy_price}")
-        else:
-            sell_price = best_bid_price
-            self.place_market_order('BTC', False, volume)
-            print(f"market sell {volume} BTC at {sell_price}")
+        # current_pos = self.positions.get('BTC', 0.0)
+        # if current_pos >= self.max_vol:
+        #     self.place_market_order('BTC', False, volume)
+        #     print(f"reduce long position by {volume}, current position: {current_pos}")
+        #     return
+
+        buy_price = best_ask_price
+        self.place_market_order('BTC', True, volume)
+        print(f"market buy {volume} BTC at {buy_price}")
 
 
 class BearTrader(Trader):
-    def __init__(self, trader_id, order_book, max_position=15, max_vol=1, buy_probability=0.8):
+    def __init__(self, trader_id, order_book, max_position=15, max_vol=1, sell_probability=0.8):
         super().__init__(trader_id, order_book, max_position, max_vol)
-        self.buy_probability = buy_probability
+        self.sell_probability = sell_probability
 
-    def on_market_data(self, mid_price):
+    def trade(self):
         # Throttle or skip sometimes
-        if random.random() < self.buy_probability:
+        if random.random() > self.sell_probability:
             return
         
-        best_ask_price = self.order_book.get_best_ask()
         best_bid_price = self.order_book.get_best_bid()
 
-        volume = random.uniform(0.001, 0.01)
+        volume = random.uniform(0.01, 0.1)
 
-        self.cancel_excess_orders()
+        # self.cancel_excess_orders()
 
-        current_pos = self.positions.get('BTC', 0.0)
-        if current_pos >= self.max_vol:
-            self.place_market_order('BTC', True, volume)
-            print(f"reduce long position by {volume}, current position: {current_pos}")
-            return
-        
-        # Usually buy
-        if random.random() < self.buy_probability:
-            buy_price = best_bid_price
-            self.place_market_order('BTC', False, volume)
-            print(f"market sell {volume} BTC at {buy_price}")
-        else:
-            sell_price = best_ask_price
-            self.place_market_order('BTC', True, volume)
-            print(f"market buy {volume} BTC at {sell_price}")
+        # current_pos = self.positions.get('BTC', 0.0)
+        # if current_pos >= self.max_vol:
+        #     self.place_market_order('BTC', True, volume)
+        #     print(f"reduce long position by {volume}, current position: {current_pos}")
+        #     return
+
+        buy_price = best_bid_price
+        self.place_market_order('BTC', False, volume)
+        print(f"market sell {volume} BTC at {buy_price}")
 
 class NoiseTrader(Trader):
     def __init__(self, trader_id, order_book, max_position=1):
         super().__init__(trader_id, order_book, max_position)
 
-    def on_market_data(self, mid_price):
-        # Sometimes skip
+    def trade(self, mid_price):
         if random.random() < 0.5:
             return
 
-        # randomly pick buy or sell
-        is_buy = bool(random.getrandbits(1))  # 50/50
+        is_buy = bool(random.getrandbits(1)) 
         volume = random.uniform(0.001, 0.01)
-        # The price is random near mid_price ± some random offset
-        price_offset = random.uniform(0.0, 0.1) * mid_price  # up to 10% away
-        if is_buy:
-            price = mid_price - price_offset
-        else:
-            price = mid_price + price_offset
+        price_offset = random.uniform(0.0, 0.1) * mid_price
 
-        # position check
-        current_pos = self.positions.get('BTC', 0.0)
-        if is_buy and current_pos >= self.max_position:
-            # skip
-            return
-        if not is_buy and current_pos <= -self.max_position:
-            # skip
-            return
+        best_ask_price = self.order_book.get_best_ask()
+        best_bid_price = self.order_book.get_best_bid()
+
+        if is_buy:
+            price = best_ask_price - price_offset
+        else:
+            price = best_bid_price + price_offset
+
+        # # position check
+        # current_pos = self.positions.get('BTC', 0.0)
+        # if is_buy and current_pos >= self.max_position:
+        #     # skip
+        #     return
+        # if not is_buy and current_pos <= -self.max_position:
+        #     # skip
+        #     return
 
         self.place_limit_order('BTC', is_buy, price, volume)
 

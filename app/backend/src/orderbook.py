@@ -103,7 +103,7 @@ class OrderBook:
                 
                 if trade_quantity < 1e-8:
                     # Force volumes to zero or break
-                    print("[Warning] trade_quantity is extremely small, breaking to avoid infinite loop.")
+                    print("trade_quantity is extremely small, breaking to avoid infinite loop.")
                     order.vol = 0
                     head_order.vol = 0
                     break
@@ -125,52 +125,50 @@ class OrderBook:
         
         return 0
             
-    def limit_order_match(self, order):
-        """ 
-        Matches an incoming order with the best available order in the order book. 
-        1. check if order is a buy or sell order
-        2. check if the price level is in the order book (dict)
-        3. if price level is in the order book, get the head order of the order list, else add order to the order book
-        4. if incoming_order.vol == order.vol, remove order from linked_list
-        5. if incoming_order.vol < order.vol, reduce vol of the head order
-        6. if incoming_order.vol > order.vol, remove head order, get next order - the remaining vol, repeat until incoming_order.vol == 0 (parital fill)
-        7. if still have remaining vol, add the order to the order book
-        8. update tree if no order in current price level
-        9. update best, worst bid and ask
-        9. return status
-        """
-        limit_tree = self.ask_tree if order.is_buy else self.bid_tree
-        
-        price = enforce_tick_size(order.price)
+    def limit_order_match(self, order: Order):
+        matching_tree = self.ask_tree if order.is_buy else self.bid_tree
+        limit_price = enforce_tick_size(order.price)
 
-        if price in limit_tree.limit_map:
-            limit = limit_tree.limit_map[price]
-        else:
-            self.add_order(order)
-            return order.vol
-        
-        while limit.order_head and order.vol > 0:
-            head_order = limit.order_head
+        while order.vol > 0 and matching_tree.limit_map:
+            best_price = matching_tree.get_best_limit() 
+            if order.is_buy:
+                if limit_price < best_price:
+                    break
+            else:
+                if limit_price > best_price:
+                    break
 
-            trade_quantity = min(order.vol, head_order.vol)
+            best_limit_node = matching_tree.limit_map[best_price]
 
-            print(f"Limit Order Trade: {trade_quantity} @ {price}")
-            order.vol -= trade_quantity
-            head_order.vol -= trade_quantity
+            while best_limit_node.order_head and order.vol > 0:
+                head_order = best_limit_node.order_head
+                trade_quantity = min(order.vol, head_order.vol)
 
-            if head_order.vol == 0:
-                self.cancel_order(head_order.id)
-                
-        if not limit.order_head:
-            limit_tree.remove_limit(price)
-            limit_tree.update_best_worst_price(price)
-        
+                if trade_quantity < 1e-8:
+                    print("[Warning] Very small trade quantity; stopping match to avoid loop.")
+                    order.vol = 0
+                    head_order.vol = 0
+                    break
+
+                order.vol -= trade_quantity
+                head_order.vol -= trade_quantity
+
+                if head_order.vol <= 0:
+                    self.cancel_order(head_order.id)
+
+                print(f"Cross Limit Fill: {trade_quantity} @ {best_price / PRICE_MULTIPLIER:.4f}")
+
+            if not best_limit_node.order_head:
+                matching_tree.remove_limit(best_price)
+                matching_tree.update_best_worst_price(best_price)
+
         if order.vol > 0:
-            self.add_order(order) 
-            print('Order filled partially')
+            self.add_order(order)
+            print(f"Partial fill. {order.vol} remains, resting at limit price {limit_price / PRICE_MULTIPLIER:.4f}")
             return order.vol
-        
+
         return 0
+
 
     def get_curent_order_book_snapshot(self):
         api_key = os.getenv("COINAPI_API_KEY")
@@ -252,12 +250,74 @@ class OrderBook:
 
         bids.sort(key=lambda x: x[0], reverse=True)
         asks.sort(key=lambda x: x[0])
-
-        print(bids)
-        print(asks)
         
         return {"bids": bids, "asks": asks}
 
 
 order_book = OrderBook()
 order_book.initialize_order_book()
+print(order_book.get_best_ask)
+print(order_book.get_best_bid)
+
+# def test_best_bid_example():
+#     # Clear the order book first if you have a method for that
+#     # For example:
+#     # order_book.bid_tree = Bid()
+#     # order_book.ask_tree = Ask()
+#     # order_book.order_map = {}
+#     order_book = OrderBook()
+
+#     # Create some buy orders at various prices
+#     buy_order_1 = Order(
+#         id=1,
+#         asset="BTC",
+#         is_buy=True,
+#         price=100.00,   # USD
+#         vol=1.0,
+#         timestamp=time.time()
+#     )
+
+#     buy_order_2 = Order(
+#         id=2,
+#         asset="BTC",
+#         is_buy=True,
+#         price=105.50,
+#         vol=0.5,
+#         timestamp=time.time()
+#     )
+
+#     buy_order_3 = Order(
+#         id=3,
+#         asset="BTC",
+#         is_buy=True,
+#         price=103.20,
+#         vol=2.0,
+#         timestamp=time.time()
+#     )
+
+#     # Add these orders to the order book
+#     order_book.add_order(buy_order_1)
+#     order_book.add_order(buy_order_2)
+#     order_book.add_order(buy_order_3)
+
+#     # Optionally, add some sell orders so we have an ask side:
+#     sell_order_1 = Order(
+#         id=4,
+#         asset="BTC",
+#         is_buy=False,
+#         price=108.10,
+#         vol=1.0,
+#         timestamp=time.time()
+#     )
+#     order_book.add_order(sell_order_1)
+
+#     # Now print out the best bid and best ask
+#     print("Best Bid:", order_book.get_best_bid())  # Expect 105.50
+#     print("Best Ask:", order_book.get_best_ask())  # Expect 108.10
+
+#     # Display the order book to see how everything lines up
+#     order_book.display_order_book()
+
+# if __name__ == "__main__":
+#     test_best_bid_example()
+

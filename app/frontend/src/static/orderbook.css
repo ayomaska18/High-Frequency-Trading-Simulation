@@ -1,5 +1,5 @@
 .orderbook-container {
-    width: 300px;
+    width: 400px;
     height: 500px;
     background: black;
     color: white;
@@ -8,6 +8,12 @@
     flex-direction: column;
     border: 1px solid #333;
     padding: 10px;
+    scrollbar-width: none;
+    -ms-overflow-style: none;
+}
+
+.orderbook-container::-webkit-scrollbar {
+    display: none;
 }
 
 .orderbook-header {
@@ -67,3 +73,4 @@
 .green {
     color: #4dff4d;
 }
+
