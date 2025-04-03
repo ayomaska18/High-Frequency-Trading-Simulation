@@ -100,6 +100,10 @@ The application will:
 
 ## Project Structure
 
+Project Structure
+The following is the desired directory layout for the project:
+
+bash
 fyp/
 ├── app/
 │   ├── backend/          # Backend API (FastAPI)
@@ -110,8 +114,8 @@ fyp/
 │   │   │   ├── orderbook.py
 │   │   │   └── main.py
 │   ├── frontend/         # Frontend application (React)
-├── [docker-compose.yaml] # Docker Compose configuration
+├── docker-compose.yaml   # Docker Compose configuration
 ├── Dockerfile            # Backend Dockerfile
-├── [.env.example]        # Environment variable template
-├── [requirements.txt]    # Python dependencies
+├── .env.example          # Environment variable template
+├── requirements.txt      # Python dependencies
 └── README.md             # Project documentation
