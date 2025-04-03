@@ -2,6 +2,10 @@
 
 This project implements a high-performance, asynchronous trading engine designed to simulate market trading with various automated trader types. The engine features an order book with market and limit order matching, a range of trader strategies, real-time data streaming via websockets, and persistent storage with PostgreSQL and InfluxDB.
 
+
+![螢幕擷取畫面 2025-04-03 005612](https://github.com/user-attachments/assets/387dc58b-ff09-42f2-9eed-2a5c0bfc00e4)
+
+
 ## Features
 
 - **Order Book & Matching Engine:**  
