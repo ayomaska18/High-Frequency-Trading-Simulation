@@ -103,7 +103,7 @@ The application will:
 Project Structure
 The following is the desired directory layout for the project:
 
-bash
+```bash
 fyp/
 ├── app/
 │   ├── backend/          # Backend API (FastAPI)
@@ -119,3 +119,4 @@ fyp/
 ├── .env.example          # Environment variable template
 ├── requirements.txt      # Python dependencies
 └── README.md             # Project documentation
+```
