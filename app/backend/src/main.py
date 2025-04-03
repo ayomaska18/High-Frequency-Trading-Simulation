@@ -7,18 +7,24 @@ from .trader import BullTrader, BearTrader, MarketMaker
 from .routers import orderbook
 from .routers import trader
 from .trader_manager import traderManager
+from .routers import order
+from .database import engine, init_db, SessionLocal
 
 async def add_initial_traders():
     initial_traders = [
-        BullTrader(trader_id=1, order_book=order_book, max_position=15),
-        BearTrader(trader_id=2, order_book=order_book, max_position=15),
-        MarketMaker(trader_id=3, order_book=order_book, max_position=15)
+        {"id": 1, "name": "BullTrader1", "trader_type": "bull", "max_position": 15, "is_bot": True},
+        {"id": 2, "name": "BearTrader1", "trader_type": "bear", "max_position": 15, "is_bot": True},
+        {"id": 3, "name": "MarketMaker1", "trader_type": "mm", "max_position": 15, "is_bot": True},
+        {"id": 4, "name": "NoiseTrader1", "trader_type": "noise", "max_position": 15, "is_bot": True},
     ]
-    for t in initial_traders:
-        await traderManager.add_trader(t)
+
+    async with SessionLocal() as session:
+        for t in initial_traders:
+            await traderManager.add_initial_traders(t, session)
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
+    await init_db()
     await add_initial_traders()
     await traderManager.start() 
     yield
@@ -37,8 +43,11 @@ app.add_middleware(
 
 app.include_router(orderbook.router)
 app.include_router(trader.router)
+app.include_router(order.router)
 
 traders = []
+
+print('application started')
 
 @app.get("/", status_code=status.HTTP_201_CREATED)
 def root():

@@ -8,6 +8,8 @@ export const WebSocketProvider = ({ children }) => {
     const [bids, setBids] = useState([]);
     const [asks, setAsks] = useState([]);
     const [midPrice, setMidPrice] = useState(0);
+    const [ohlc, setOhlc] = useState([]);
+    const [time, setTime] = useState(0);
     const [isConnected, setIsConnected] = useState(false);
     const [socket, setSocket] = useState(null);
 
@@ -30,6 +32,21 @@ export const WebSocketProvider = ({ children }) => {
                     setBids(data.bids || []);
                     setAsks(data.asks || []);
                     setMidPrice(data.midPrice || 0);
+                    setTime(data.time || 0);
+
+                    if (data.OHLC) {
+                        setOhlc((prev) => [
+                          ...prev,
+                          {
+                            open: data.OHLC.open,
+                            high: data.OHLC.high,
+                            low: data.OHLC.low,
+                            close: data.OHLC.close,
+                            time: data.time
+                          },
+                        ]);
+                      }
+
                 } catch (error) {
                     console.error("WebSocket Error Parsing Data:", error);
                 }
@@ -52,7 +69,7 @@ export const WebSocketProvider = ({ children }) => {
     }, []);
 
     return (
-        <WebSocketContext.Provider value={{ bids, asks, midPrice }}>
+        <WebSocketContext.Provider value={{ bids, asks, midPrice, ohlc, time }}>
             {children}
         </WebSocketContext.Provider>
     );

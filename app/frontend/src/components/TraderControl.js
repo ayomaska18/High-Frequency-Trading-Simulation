@@ -9,6 +9,12 @@ const TraderControls = () => {
     const [bearCount, setBearCount] = useState(0);
     const [marketMakerCount, setMarketMakerCount] = useState(0);
     const [noiseTraderCount, setNoiseTraderCount] = useState(0);
+    const [traderCounters, setTraderCounters] = useState({
+        bull: 0,
+        bear: 0,
+        mm: 0,
+        noise: 0,
+    });
 
     const fetchTraders = async () => {
         try {
@@ -19,9 +25,26 @@ const TraderControls = () => {
         }
     };
 
-    const addTrader = async (type) => {
+    const addTrader = async (type, is_bot) => {
         try {
-            await axios.post(API_URL, { name: type });
+            const newCounter = traderCounters[type] + 1;
+            const traderName = `trader_${type}_${newCounter}`;
+
+            // Send the POST request to add the trader
+            await axios.post(API_URL, {
+                name: traderName,
+                trader_type: type,
+                balance: 1000.0,
+                is_bot: is_bot,
+            });
+
+            // Update the counter in the state
+            setTraderCounters((prevCounters) => ({
+                ...prevCounters,
+                [type]: newCounter,
+            }));
+
+            // Fetch the updated list of traders
             fetchTraders();
         } catch (error) {
             console.error("Error adding trader:", error);
@@ -37,15 +60,30 @@ const TraderControls = () => {
         }
     };
 
+    const createRealTrader = async () => {
+        try {
+            const response = await axios.post(`${API_URL}/real`, {
+                name: "client",
+                trader_type: "client",
+                balance: 1000.0,
+                is_bot: false,
+            });
+            console.log("Real trader created:", response.data);
+        } catch (error) {
+            console.error("Error creating real trader:", error);
+        }
+    };
+
     useEffect(() => {
+        createRealTrader();
         fetchTraders();
     }, []);
 
     useEffect(() => {
-        const bullCount = traders.filter(t => t.type === "BullTrader").length;
-        const bearCount = traders.filter(t => t.type === "BearTrader").length;
-        const marketMakerCount = traders.filter(t => t.type === "MarketMaker").length;
-        const noiseTraderCount = traders.filter(t => t.type === "NoiseTrader").length;
+        const bullCount = traders.filter(t => t.type === "bull").length;
+        const bearCount = traders.filter(t => t.type === "bear").length;
+        const marketMakerCount = traders.filter(t => t.type === "mm").length;
+        const noiseTraderCount = traders.filter(t => t.type === "noise").length;
 
         setBullCount(bullCount);
         setBearCount(bearCount);
@@ -57,23 +95,23 @@ const TraderControls = () => {
         <div className="trader-controls">
             <h2>Trader Controls</h2>
             <div className="control-group">
-                <button onClick={() => addTrader("BullTrader")}>Add BullTrader</button>
-                <button onClick={() => removeTrader("BullTrader")}>Remove BullTrader</button>
+                <button onClick={() => addTrader("bull", true)}>Add BullTrader</button>
+                <button onClick={() => removeTrader("bull")}>Remove BullTrader</button>
                 <span>BullTraders: {bullCount}</span>
             </div>
             <div className="control-group">
-                <button onClick={() => addTrader("BearTrader")}>Add BearTrader</button>
-                <button onClick={() => removeTrader("BearTrader")}>Remove BearTrader</button>
+                <button onClick={() => addTrader("bear", true)}>Add BearTrader</button>
+                <button onClick={() => removeTrader("bear")}>Remove BearTrader</button>
                 <span>BearTraders: {bearCount}</span>
             </div>
             <div className="control-group">
-                <button onClick={() => addTrader("MarketMaker")}>Add MarketMaker</button>
-                <button onClick={() => removeTrader("MarketMaker")}>Remove MarketMaker</button>
+                <button onClick={() => addTrader("mm", true)}>Add MarketMaker</button>
+                <button onClick={() => removeTrader("mm")}>Remove MarketMaker</button>
                 <span>MarketMakers: {marketMakerCount}</span>
             </div>
             <div className="control-group">
-                <button onClick={() => addTrader("NoiseTrader")}>Add NoiseTrader</button>
-                <button onClick={() => removeTrader("NoiseTrader")}>Remove NoiseTrader</button>
+                <button onClick={() => addTrader("noise", true)}>Add NoiseTrader</button>
+                <button onClick={() => removeTrader("noise")}>Remove NoiseTrader</button>
                 <span>NoiseTraders: {noiseTraderCount}</span>
             </div>
         </div>

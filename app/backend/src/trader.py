@@ -5,17 +5,18 @@ from collections import defaultdict
 from .setting import MAKER_FEE, TAKER_FEE
 
 class Trader:
-    def __init__(self, trader_id, order_book, balance=1000,  # Initial balance in USD
-                 max_position=15, max_vol = 1,   # Maximum long/short inventory
-                 ): # Reference or "fair" price for limit orders
+    def __init__(self, trader_id, name, order_book, is_bot, balance=1000,
+                 max_position=15, max_vol = 1):
 
-        self.trader_id = trader_id
+        self.id = trader_id
+        self.name = name
         self.order_book = order_book
         self.balance = balance
         self.positions = defaultdict(int)
         self.open_orders = []
         self.max_position = max_position
         self.max_vol = max_vol
+        self.is_bot = is_bot
 
     # def on_fill(self, order, remaining_vol, filled_vol):
     #     order_id = fill_info['order_id']
@@ -61,39 +62,43 @@ class Trader:
 
         order = Order(
             id=id,
+            trader_id=self.id,
             asset=asset,
             is_buy=is_buy,
             price=price,
             vol=volume,
+            order_type='LIMIT',
             timestamp=time.time(),
         )
 
-        remaining_vol = self.order_book.limit_order_match(order)
+        message = self.order_book.limit_order_match(order)
 
-        if remaining_vol: # Partial fill
-            order.vol = remaining_vol
-            self.open_orders.append(order.id)
-            filled_vol = volume - remaining_vol
-        else: # Fully filled
-            filled_vol = volume
+        print('status', message['status'])
 
-        self.positions[asset] += filled_vol if is_buy else -filled_vol
-        self.balance -= filled_vol * price
+        # if remaining_vol: # Partial fill
+        #     order.vol = remaining_vol
+        #     self.open_orders.append(order.id)
+        #     filled_vol = volume - remaining_vol
+        # else: # Fully filled
+        #     filled_vol = volume
+
+        # self.positions[asset] += filled_vol if is_buy else -filled_vol
+        # self.balance -= filled_vol * price
         
-        # Apply maker fee (rebate)
-        self.balance += filled_vol * price * MAKER_FEE
+        # # Apply maker fee (rebate)
+        # self.balance += filled_vol * price * MAKER_FEE
 
-        print(f"[Trader {self.trader_id}] LIMIT {'BUY' if is_buy else 'SELL'} {volume} @ {price}, "
-              f"New Position: {self.positions[asset]}")
+        # print(f"[Trader {self.trader_id}] LIMIT {'BUY' if is_buy else 'SELL'} {volume} @ {price}, "
+        #       f"New Position: {self.positions[asset]}")
     
     def place_cancel_order(self, order_id):
         if order_id not in self.open_orders:
-            print(f"[Trader {self.trader_id}] Order {order_id} not found in open orders.")
+            print(f"[Trader {self.id}] Order {order_id} not found in open orders.")
             return
 
         self.order_book.cancel_order(order_id)
         self.open_orders.remove(order_id)
-        print(f"[Trader {self.trader_id}] CANCEL order {order_id}.")
+        print(f"[Trader {self.id}] CANCEL order {order_id}.")
 
     def place_market_order(self, asset, is_buy, volume):
         print('buy vol', volume)
@@ -117,32 +122,36 @@ class Trader:
 
         if best_price is None:
             # No liquidity on the opposite side
-            print(f"[Trader {self.trader_id}] No liquidity for {'BUY' if is_buy else 'SELL'} market order!")
+            print(f"[Trader {self.id}] No liquidity for {'BUY' if is_buy else 'SELL'} market order!")
             return
 
         order = Order(
             id=int(time.time() * 1000),
+            trader_id=self.id,
             asset=asset,
             is_buy=is_buy,
-            price=best_price,  # Market order "trades through" the book at best_price or better
+            price=best_price,
+            order_type='MARKET',
             vol=volume,
             timestamp=time.time(),
         )
 
-        remaining_vol = self.order_book.market_order_match(order)
+        message = self.order_book.market_order_match(order)
 
-        if remaining_vol: # Not fully filled
-            print("Market Order not fully filled")
-            return
-        else:
-            self.positions[asset] += volume if is_buy else -volume
-            self.balance -= volume * best_price
+        # if remaining_vol: # Not fully filled
+        #     print("Market Order not fully filled")
+        #     return
+        # else:
+        #     self.positions[asset] += volume if is_buy else -volume
+        #     self.balance -= volume * best_price
             
-            # Apply taker fee (cost)
-            self.balance -= volume * best_price * TAKER_FEE
+        #     # Apply taker fee (cost)
+        #     self.balance -= volume * best_price * TAKER_FEE
 
-            print(f"[Trader {self.trader_id}] MARKET {'BUY' if is_buy else 'SELL'} {volume} @ {best_price}, "
-                  f"New Position: {self.positions[asset]}, Balance: {self.balance}")
+        #     print(f"[Trader {self.trader_id}] MARKET {'BUY' if is_buy else 'SELL'} {volume} @ {best_price}, "
+        #           f"New Position: {self.positions[asset]}, Balance: {self.balance}")
+
+        print('status', message['status'])
 
     def trade(self):
         pass
@@ -155,12 +164,34 @@ class Trader:
             self.place_cancel_order(order_id)
             print('canceled excess order')
 
+class Client(Trader):
+    def __init__(self, trader_id, name, order_book, is_bot, max_position=15, max_vol = 1):
+        super().__init__(
+            trader_id = trader_id,
+            name = name,
+            order_book = order_book,
+            is_bot = is_bot,
+            max_position = max_position,
+            balance = 1000,
+            max_vol = max_vol,
+        )
+
+
+
 class MarketMaker(Trader):
-    def __init__(self, trader_id, order_book, max_position,
+    def __init__(self, trader_id, name, order_book, max_position, is_bot,
                  base_spread=0.0005,    # narrower base spread
                  inventory_coefficient=0.0005
                  ):
-        super().__init__(trader_id, order_book, max_position)
+        super().__init__(
+            trader_id = trader_id,
+            name = name,
+            order_book = order_book,
+            is_bot = is_bot,
+            max_position = max_position,
+            balance = 1000,
+            max_vol = 15,
+        )
         self.base_spread = base_spread
         self.inv_coef = inventory_coefficient
 
@@ -286,8 +317,16 @@ class MarketMaker(Trader):
 #             #     self.place_market_order(is_buy=False, volume=volume)
 
 class BullTrader(Trader):
-    def __init__(self, trader_id, order_book, max_position=15, max_vol=1, buy_probability=0.8):
-        super().__init__(trader_id, order_book, max_position, max_vol)
+    def __init__(self, trader_id, name, order_book, is_bot, max_position=15, max_vol=1, buy_probability=0.8):
+        super().__init__(
+            trader_id = trader_id,
+            name = name,
+            order_book = order_book,
+            is_bot = is_bot,
+            max_position = max_position,
+            balance = 1000,
+            max_vol = 15,
+        )
         self.buy_probability = buy_probability 
 
     def trade(self):
@@ -312,8 +351,16 @@ class BullTrader(Trader):
 
 
 class BearTrader(Trader):
-    def __init__(self, trader_id, order_book, max_position=15, max_vol=1, sell_probability=0.8):
-        super().__init__(trader_id, order_book, max_position, max_vol)
+    def __init__(self, trader_id, name, order_book, is_bot, max_position=15, max_vol=1, sell_probability=0.8):
+        super().__init__(
+            trader_id = trader_id,
+            name = name,
+            order_book = order_book,
+            is_bot = is_bot,
+            max_position = max_position,
+            max_vol = max_vol,
+            balance = 1000,
+        )
         self.sell_probability = sell_probability
 
     def trade(self):
@@ -338,19 +385,30 @@ class BearTrader(Trader):
         print(f"market sell {volume} BTC at {buy_price}")
 
 class NoiseTrader(Trader):
-    def __init__(self, trader_id, order_book, max_position=1):
-        super().__init__(trader_id, order_book, max_position)
+    def __init__(self, trader_id, name, order_book, is_bot, max_position=1):
+        super().__init__(
+            trader_id = trader_id,
+            name = name,
+            order_book = order_book,
+            is_bot = is_bot,
+            max_position = max_position,
+            max_vol = 1,
+            balance = 1000,
+        )
 
-    def trade(self, mid_price):
+    def trade(self):
         if random.random() < 0.5:
             return
 
         is_buy = bool(random.getrandbits(1)) 
         volume = random.uniform(0.001, 0.01)
-        price_offset = random.uniform(0.0, 0.1) * mid_price
 
         best_ask_price = self.order_book.get_best_ask()
         best_bid_price = self.order_book.get_best_bid()
+
+        mid_price = (best_ask_price + best_bid_price) / 2
+
+        price_offset = random.uniform(0.0, 0.1) * mid_price
 
         if is_buy:
             price = best_ask_price - price_offset

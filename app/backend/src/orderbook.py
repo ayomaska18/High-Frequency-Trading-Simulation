@@ -10,6 +10,7 @@ import requests
 import os
 from IPython.display import display
 from dotenv import load_dotenv
+from .pubsub import publish
 
 load_dotenv()
 
@@ -43,6 +44,8 @@ class OrderBook:
 
         if not limit.order_head: 
             limit_tree.remove_limit(price)
+        
+        return {'status': 'Order Cancelled'}
         
 
     def get_best_bid(self):
@@ -82,8 +85,12 @@ class OrderBook:
         self._inorder_traverse(node.left, result)
         result[node.price] = node.get_total_vol()
         self._inorder_traverse(node.right, result)
+
+    async def send_fill_event(trader_id, message):
+        await publish(trader_id, message)
     
     def market_order_match(self, order):
+        from .trader_manager import traderManager
         limit_tree = self.ask_tree if order.is_buy else self.bid_tree
         
         while limit_tree.limit_map and order.vol > 0:
@@ -92,15 +99,14 @@ class OrderBook:
 
             if not best_limit:
                 print("Insufficient Liquidity to fill order")
-                return order.vol    
+                return {'status': 'Insufficient Liquidity to fill order'}    
 
             limit = limit_tree.limit_map[best_limit]
-            print('limit:', limit)
 
-            while limit.order_head and order.vol > 0: # current price level orders
+            while limit.order_head and order.vol > 0:
                 head_order = limit.order_head
                 trade_quantity = min(order.vol, head_order.vol)
-                
+
                 if trade_quantity < 1e-8:
                     # Force volumes to zero or break
                     print("trade_quantity is extremely small, breaking to avoid infinite loop.")
@@ -111,21 +117,45 @@ class OrderBook:
                 order.vol -= trade_quantity
                 head_order.vol -= trade_quantity
 
-                if head_order.vol == 0:
+                if head_order.vol == 0: # when current ob order is fully filled
                     self.cancel_order(head_order.id)
-                print('trade_quantity', trade_quantity)
-                
+
+                    if head_order.trader_id:
+                        if not traderManager.get_trader_by_id(head_order.trader_id).is_bot:
+                            self.send_fill_event(head_order.trader_id, {
+                                "order_id": head_order.id,
+                                "asset": head_order.asset,
+                                "is_buy": head_order.is_buy,
+                                "trader_id": head_order.trader_id,
+                                "price": head_order.price,
+                                "volume": trade_quantity,
+                                "order_type": head_order.order_type,
+                            })
+
+                if order.vol == 0:
+                    if order.trader_id:
+                        if not traderManager.get_trader_by_id(order.trader_id).is_bot:
+                            self.send_fill_event(order.trader_id, {
+                                    "order_id": order.trader_id,
+                                    "asset": order.trader_id,
+                                    "is_buy": order.is_buy,
+                                    "price": order.price,
+                                    "volume": trade_quantity,
+                                    "order_type": order.order_type,
+                                })
+
             if not limit.order_head:
                 limit_tree.remove_limit(best_limit)
                 limit_tree.update_best_worst_price(best_limit)
         
         if not limit_tree.limit_map and order.vol:
             print("Insufficient Liquidity to fill order")
-            return order.vol
-        
-        return 0
+            return {'status': 'Insufficient Liquidity to fill order'}    
+
+        return {'status': 'Order Filled'}
             
     def limit_order_match(self, order: Order):
+        from .trader_manager import traderManager
         matching_tree = self.ask_tree if order.is_buy else self.bid_tree
         limit_price = enforce_tick_size(order.price)
 
@@ -149,12 +179,36 @@ class OrderBook:
                     order.vol = 0
                     head_order.vol = 0
                     break
+                print('trade_quantity', trade_quantity)
 
                 order.vol -= trade_quantity
                 head_order.vol -= trade_quantity
 
                 if head_order.vol <= 0:
                     self.cancel_order(head_order.id)
+                    if head_order.trader_id:
+                        if not traderManager.get_trader_by_id(head_order.trader_id).is_bot:
+                            self.send_fill_event(head_order.trader_id, {
+                                "order_id": head_order.id,
+                                "asset": head_order.asset,
+                                "is_buy": head_order.is_buy,
+                                "trader_id": head_order.trader_id,
+                                "price": head_order.price,
+                                "volume": trade_quantity,
+                                "order_type": head_order.order_type,
+                            })
+
+                if order.vol == 0:
+                    if order.trader_id:
+                        if not traderManager.get_trader_by_id(order.trader_id).is_bot:
+                            self.send_fill_event(order.trader_id, {
+                                    "order_id": order.id,
+                                    "asset": order.asset,
+                                    "is_buy": order.is_buy,
+                                    "price": order.price,
+                                    "volume": trade_quantity,
+                                    "order_type": order.order_type,
+                                })
 
                 print(f"Cross Limit Fill: {trade_quantity} @ {best_price / PRICE_MULTIPLIER:.4f}")
 
@@ -163,11 +217,12 @@ class OrderBook:
                 matching_tree.update_best_worst_price(best_price)
 
         if order.vol > 0:
+            remaining_order = order
             self.add_order(order)
             print(f"Partial fill. {order.vol} remains, resting at limit price {limit_price / PRICE_MULTIPLIER:.4f}")
-            return order.vol
+            return {'status': 'Partial Fill - Order Resting'}
 
-        return 0
+        return {'status': 'Order Filled'}
 
 
     def get_curent_order_book_snapshot(self):
@@ -200,15 +255,17 @@ class OrderBook:
 
             bid_order = Order(
                 id=i,
+                trader_id=None,
                 asset="BTC",
                 is_buy=True,
                 price=bid_price,
                 vol=bid_vol,
+                order_type="LIMIT",
                 timestamp=time.time()
             )
 
             self.add_order(bid_order)
-            print(f"Order Added: BUY {bid_vol} @ {bid_price}")
+            # print(f"Order Added: BUY {bid_vol} @ {bid_price}")
 
         offset = len(bids) 
         for j, ask in enumerate(asks):
@@ -217,15 +274,17 @@ class OrderBook:
 
             ask_order = Order(
                 id=offset + j,
+                trader_id=None,
                 asset="BTC",
                 is_buy=False,
                 price=ask_price,
                 vol=ask_vol,
+                order_type="LIMIT",
                 timestamp=time.time()
             )
             
             self.add_order(ask_order)
-            print(f"Order Added: SELL {ask_vol} @ {ask_price}")
+            # print(f"Order Added: SELL {ask_vol} @ {ask_price}")
 
         print("\nOrder book initialized from snapshot!\n")
 
@@ -256,8 +315,8 @@ class OrderBook:
 
 order_book = OrderBook()
 order_book.initialize_order_book()
-print(order_book.get_best_ask)
-print(order_book.get_best_bid)
+# print(order_book.get_best_ask)
+# print(order_book.get_best_bid)
 
 # def test_best_bid_example():
 #     # Clear the order book first if you have a method for that

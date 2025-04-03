@@ -3,7 +3,7 @@ import { WebSocketContext } from "./WebSocketContext";
 
 const OrderBook = () => {
     const context = useContext(WebSocketContext);
-    const { bids, asks, midPrice } = useContext(WebSocketContext);
+    const { bids, asks, midPrice} = useContext(WebSocketContext);
 
     if (!context) {
         console.error("WebSocketContext is not available!");

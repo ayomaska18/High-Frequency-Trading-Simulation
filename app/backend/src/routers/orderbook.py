@@ -3,6 +3,7 @@ import json
 import asyncio
 import time
 from ..orderbook import order_book 
+from ..influxdb import write_to_influxdb
 
 router = APIRouter(
     prefix="/orderbook",
@@ -21,11 +22,13 @@ async def websocket_endpoint(websocket: WebSocket):
     await websocket.accept()
     clients.add(websocket)
 
+    prices = []
+    window_start = time.time()
+
     try:
         while True:
             try:
                 data = order_book.fetch_order_book()
-
                 best_bid = order_book.get_best_bid()
                 best_ask = order_book.get_best_ask()
 
@@ -35,18 +38,53 @@ async def websocket_endpoint(websocket: WebSocket):
                     mid_price = (best_bid + best_ask) / 2
 
                 mid_price = round(mid_price, 8) if mid_price else 0
+                prices.append(mid_price)
+                current_time = time.time()  
 
-                response = {
-                    "bids": data["bids"],
-                    "asks": data["asks"],
-                    "midPrice": mid_price,
-                    "time": int(time.time())
-                }
-                await websocket.send_text(json.dumps(response))
+                if current_time - window_start >= 5:
+                    open_price = prices[0] if prices else 0
+                    high_price = max(prices) if prices else 0
+                    low_price = min(prices) if prices else 0
+                    close_price = prices[-1] if prices else 0
+
+                    ohlc = {
+                        "open": open_price,
+                        "high": high_price,
+                        "low": low_price,
+                        "close": close_price
+                    }
+
+                    response = {
+                        "bids": data["bids"],
+                        "asks": data["asks"],
+                        "mid_price": mid_price,
+                        "OHLC": ohlc,
+                        "time": int(current_time)
+                    }
+
+                    try:
+                        await write_to_influxdb(int(current_time), ohlc, "BTC")
+                    except Exception as e:
+                        print(f"Error writing to InfluxDB: {e}")
+
+                    await websocket.send_text(json.dumps(response))
+
+                    window_start = current_time
+                    prices = []
+                else:
+                    response = {
+                        "bids": data["bids"],
+                        "asks": data["asks"],
+                        "mid_price": mid_price,
+                        "OHLC": None,
+                        "time": int(current_time)
+                    }
+
+                    await websocket.send_text(json.dumps(response))
 
             except WebSocketDisconnect:
                 print("Client disconnected")
-                break 
+                break
             except Exception as e:
                 print(f"Error inside WebSocket loop: {e}")
 

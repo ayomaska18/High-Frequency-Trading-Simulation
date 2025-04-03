@@ -1,5 +1,5 @@
 import React, { useEffect, useRef, useState, useContext } from "react";
-import { AreaSeries, createChart } from 'lightweight-charts';
+import { AreaSeries, createChart, CandlestickSeries } from 'lightweight-charts';
 import { WebSocketContext } from "./WebSocketContext";
 
 const TradingChart = () => {
@@ -7,7 +7,7 @@ const TradingChart = () => {
     const [chart, setChart] = useState(null);
     const [series, setSeries] = useState(null);
     const [socket, setSocket] = useState(null);
-    const { midPrice } = useContext(WebSocketContext);
+    const {ohlc} = useContext(WebSocketContext);
 
     useEffect(() => {
         if (!chartContainerRef.current) return;
@@ -15,13 +15,17 @@ const TradingChart = () => {
         const chartOptions = {
             width: 1190,
             height: 522,
-            layout: { backgroundColor: "#000", textColor: "#black" },
+            layout: { background: {type:'solid', color:'black'}, textColor: 'white' },
             grid: { vertLines: { color: "#333" }, horzLines: { color: "#333" } },
-        }
+        };
         const newChart = createChart(chartContainerRef.current, chartOptions);
-
-        const newSeries = newChart.addSeries(AreaSeries, { color: "#007bff" });
-
+        const newSeries = newChart.addSeries(CandlestickSeries, {
+            upColor: "#26a69a",
+            downColor: "#ef5350",
+            borderVisible: false,
+            wickUpColor: "#26a69a",
+            wickDownColor: "#ef5350",
+          });
         setChart(newChart);
         setSeries(newSeries);
 
@@ -29,13 +33,17 @@ const TradingChart = () => {
     }, []);
 
     useEffect(() => {
-        if (series && midPrice) {
-            series.update({
-                time: Math.floor(Date.now() / 1000),
-                value: midPrice,
-            });
+        if (series && ohlc && Array.isArray(ohlc)) {
+            const formattedData = ohlc.map(candle => ({
+                open: candle.open,
+                high: candle.high,
+                low: candle.low,
+                close: candle.close,
+                time: candle.time
+            }));
+            series.setData(formattedData);
         }
-    }, [midPrice]);
+    }, [ohlc, series]);
 
     return (
         <div className="chart-container" ref={chartContainerRef} />
