@@ -8,7 +8,7 @@ class Trader:
     def __init__(self, trader_id, name, order_book, is_bot, balance=1000,
                  max_position=15, max_vol = 1):
 
-        self.id = trader_id
+        self.trader_id = trader_id
         self.name = name
         self.order_book = order_book
         self.balance = balance
@@ -62,7 +62,7 @@ class Trader:
 
         order = Order(
             id=id,
-            trader_id=self.id,
+            trader_id=self.trader_id,
             asset=asset,
             is_buy=is_buy,
             price=price,
@@ -127,7 +127,7 @@ class Trader:
 
         order = Order(
             id=int(time.time() * 1000),
-            trader_id=self.id,
+            trader_id=self.trader_id,
             asset=asset,
             is_buy=is_buy,
             price=best_price,

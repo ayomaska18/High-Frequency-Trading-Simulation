@@ -9,13 +9,25 @@ from .routers import trader
 from .trader_manager import traderManager
 from .routers import order
 from .database import engine, init_db, SessionLocal
+import logging
+
+logging.basicConfig(
+    level=logging.INFO,  # Set the logging level (DEBUG, INFO, WARNING, ERROR, CRITICAL)
+    format="%(asctime)s - %(name)s - %(levelname)s - %(message)s",  # Log format
+    handlers=[
+        logging.StreamHandler(),  # Log to console
+        logging.FileHandler("app.log"),  # Log to a file
+    ],
+)
+
+logger = logging.getLogger("TraderManager")
 
 async def add_initial_traders():
     initial_traders = [
-        {"id": 1, "name": "BullTrader1", "trader_type": "bull", "max_position": 15, "is_bot": True},
-        {"id": 2, "name": "BearTrader1", "trader_type": "bear", "max_position": 15, "is_bot": True},
-        {"id": 3, "name": "MarketMaker1", "trader_type": "mm", "max_position": 15, "is_bot": True},
-        {"id": 4, "name": "NoiseTrader1", "trader_type": "noise", "max_position": 15, "is_bot": True},
+        {"trader_id": 1, "name": "BullTrader1", "trader_type": "bull", "max_position": 15, "is_bot": True},
+        {"trader_id": 2, "name": "BearTrader1", "trader_type": "bear", "max_position": 15, "is_bot": True},
+        {"trader_id": 3, "name": "MarketMaker1", "trader_type": "mm", "max_position": 15, "is_bot": True},
+        {"trader_id": 4, "name": "NoiseTrader1", "trader_type": "noise", "max_position": 15, "is_bot": True},
     ]
 
     async with SessionLocal() as session:

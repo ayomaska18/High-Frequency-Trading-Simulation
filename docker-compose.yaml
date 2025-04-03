@@ -63,6 +63,3 @@ services:
       DOCKER_INFLUXDB_INIT_ADMIN_TOKEN: ${INFLUXDB_ADMIN_TOKEN}
     env_file:
       - .env
-
-
-

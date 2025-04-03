@@ -6,6 +6,8 @@ from sqlalchemy.orm import Session
 from .trader import *
 from .orderbook import order_book
 
+
+
 class TraderManager:
     def __init__(self):
         self.traders: Dict[Type[Trader], List[Trader]] = {
@@ -18,48 +20,52 @@ class TraderManager:
         self.running: bool = False
         self.trader_id_map: Dict[int, Trader] = {}
 
-    def add_trader(self, trader: Trader) -> None:
-        if "bull" in trader["trader_type"].lower():
-            new_trader = BullTrader(
-                name=trader['name'],
-                trader_id=trader['trader_id'],
-                order_book=order_book,
-                max_position=15,
-                is_bot=trader['is_bot']
-            )
-        elif "bear" in trader["trader_type"].lower():
-            new_trader = BearTrader(
-                name=trader['name'],
-                trader_id=trader['trader_id'],
-                order_book=order_book,
-                max_position=15,
-                is_bot=trader['is_bot']
-            )
-        elif "noise" in trader["trader_type"].lower():
-            new_trader = NoiseTrader(
-                name=trader['name'],
-                trader_id=trader['trader_id'],
-                order_book=order_book,
-                max_position=15,
-                is_bot = trader['is_bot']
-            )
-        elif "mm" in trader["trader_type"].lower():
-            new_trader = MarketMaker(
-                name=trader['name'],
-                trader_id=trader['trader_id'],
-                order_book=order_book,
-                max_position=15,
-                is_bot = trader['is_bot']
-            )
-        
-        trader_type = type(new_trader)
-        self.traders[trader_type].append(new_trader)
-        self.trader_id_map[trader['trader_id']] = new_trader
+    async def add_trader(self, trader: dict) -> None:
+        print(trader)
+        try:
+            if "bull" in trader["trader_type"].lower():
+                new_trader = BullTrader(
+                    name=trader['name'],
+                    trader_id=trader['trader_id'],
+                    order_book=order_book,
+                    max_position=15,
+                    is_bot=trader['is_bot']
+                )
+            elif "bear" in trader["trader_type"].lower():
+                new_trader = BearTrader(
+                    name=trader['name'],
+                    trader_id=trader['trader_id'],
+                    order_book=order_book,
+                    max_position=15,
+                    is_bot=trader['is_bot']
+                )
+            elif "noise" in trader["trader_type"].lower():
+                new_trader = NoiseTrader(
+                    name=trader['name'],
+                    trader_id=trader['trader_id'],
+                    order_book=order_book,
+                    max_position=15,
+                    is_bot = trader['is_bot']
+                )
+            elif "mm" in trader["trader_type"].lower():
+                new_trader = MarketMaker(
+                    name=trader['name'],
+                    trader_id=trader['trader_id'],
+                    order_book=order_book,
+                    max_position=15,
+                    is_bot = trader['is_bot']
+                )
+            
+            trader_type = type(new_trader)
+            self.traders[trader_type].append(new_trader)
+            self.trader_id_map[trader['trader_id']] = new_trader
 
-        if self.running:
-            task = asyncio.create_task(self._trader_task(trader))
-            task.set_name(f"trader-{trader['trader_id']}")
-            self.tasks.append(task)
+            if self.running:
+                task = asyncio.create_task(self._trader_task(new_trader))
+                task.set_name(f"trader-{trader['trader_id']}")
+                self.tasks.append(task)
+        except Exception as e:
+            print(f"Error adding trader in trader manager: {e}")
 
     async def add_initial_traders(self, trader: Trader, db: Session) -> None:
         db_trader = models.Trader(
@@ -75,7 +81,7 @@ class TraderManager:
         if "bull" in trader["trader_type"].lower():
             new_trader = BullTrader(
                 name=trader['name'],
-                id=db_trader.id,
+                trader_id=db_trader.id,
                 order_book=order_book,
                 max_position=15,
                 is_bot=trader['is_bot']
@@ -83,7 +89,7 @@ class TraderManager:
         elif "bear" in trader["trader_type"].lower():
             new_trader = BearTrader(
                 name=trader['name'],
-                id=db_trader.id,
+                trader_id=db_trader.id,
                 order_book=order_book,
                 max_position=15,
                 is_bot=trader['is_bot']
@@ -91,7 +97,7 @@ class TraderManager:
         elif "noise" in trader["trader_type"].lower():
             new_trader = NoiseTrader(
                 name=trader['name'],
-                id=db_trader.id,
+                trader_id=db_trader.id,
                 order_book=order_book,
                 max_position=15,
                 is_bot = trader['is_bot']
@@ -99,7 +105,7 @@ class TraderManager:
         else:
             new_trader = MarketMaker(
                 name=trader['name'],
-                id=db_trader.id,
+                trader_id=db_trader.id,
                 order_book=order_book,
                 max_position=15,
                 is_bot = trader['is_bot']
@@ -111,9 +117,8 @@ class TraderManager:
 
         if self.running:
             task = asyncio.create_task(self._trader_task(trader))
-            task.set_name(f"trader-{trader.id}")
+            task.set_name(f"trader-{trader.trader_id}")
             self.tasks.append(task)
-
 
     async def remove_trader(self, trader_type):
         trader_type_map = {
@@ -134,23 +139,23 @@ class TraderManager:
             return None
         
         trader = self.traders[trader_class].pop()
-        self.trader_id_map.pop(trader.id, None)
-        print(f"Removed trader from TraderManager: {trader.id}")
+        self.trader_id_map.pop(trader.trader_id, None)
+        print(f"Removed trader from TraderManager: {trader.trader_id}")
 
-        task = next((t for t in self.tasks if t.get_name() == f"trader-{trader.id}"), None)
+        task = next((t for t in self.tasks if t.get_name() == f"trader-{trader.trader_id}"), None)
         if task:
             task.cancel()
             self.tasks.remove(task)
-            print(f"Cancelled task for trader: {trader.id}")
+            print(f"Cancelled task for trader: {trader.trader_id}")
 
-        return trader.id
+        return trader.trader_id
 
     async def start(self) -> None:
         self.running = True
         for trader_list in self.traders.values():
             for trader in trader_list:
                 task = asyncio.create_task(self._trader_task(trader))
-                task.set_name(f"trader-{trader.id}")
+                task.set_name(f"trader-{trader.trader_id}")
                 self.tasks.append(task)
 
     async def stop(self) -> None:
@@ -167,7 +172,7 @@ class TraderManager:
             except asyncio.CancelledError:
                 break
             except Exception as e:
-                print(f"Error in trader task (ID: {trader.id}): {e}")
+                print(f"Error in trader task (ID: {trader.trader_id}): {e}")
 
     def list_traders(self) -> List[Trader]:
         return self.traders

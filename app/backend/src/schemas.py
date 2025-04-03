@@ -12,14 +12,14 @@ class TraderCreate(TraderBase):
     pass
 
 class TraderResponse(TraderBase):
-    id: int
+    trader_id: int
     orders: Optional[List["OrderResponse"]] = []
 
     class Config:
         orm_mode = True
 
 class OrderBase(BaseModel):
-    order_id: int
+    id: int
     asset: str
     is_buy: bool
     trader_id: int

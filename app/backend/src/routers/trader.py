@@ -23,28 +23,38 @@ async def add_trader(trader:schemas.TraderCreate, db: Session = Depends(get_db))
     try:
         
         new_trader =  models.Trader(**trader.model_dump())
+        original_trader = new_trader 
+        print(f"Created new_trader object: {new_trader}")
         
         db.add(new_trader)
         await db.commit()
         await db.refresh(new_trader)
+        print(f"Added trader to database: {new_trader}")
 
-        if new_trader.is_bot:
-            new_trader = {
-                "trader_id": new_trader.id,
-                "name": new_trader.name,
-                "trader_type": new_trader.trader_type,
-                "max_position": 15,
-                "is_bot": new_trader.is_bot
-            }
+        trader_id = int(original_trader.id)
+        name = str(original_trader.name)
+        trader_type = str(original_trader.trader_type)
+        is_bot = bool(original_trader.is_bot)
+
         
-            await traderManager.add_trader(new_trader, db)
+        if original_trader.is_bot:
+            bot_info = {
+                "trader_id": trader_id,
+                "name": name,
+                "trader_type": trader_type,
+                "max_position": 15,
+                "is_bot": is_bot
+            }
+            print(f"Adding trader to TraderManager: {bot_info}")
+            await traderManager.add_trader(bot_info)
+            print('added trader to trader manager')
 
         return schemas.TraderResponse(
-            name = new_trader.name,
-            id=new_trader.id,
-            trader_type=new_trader.trader_type,
-            balance=new_trader.balance,
-            is_bot=new_trader.is_bot,
+            name = original_trader.name,
+            trader_id=original_trader.id,
+            trader_type=original_trader.trader_type,
+            balance=original_trader.balance,
+            is_bot=original_trader.is_bot,
             orders=[]
         )
     except Exception as e:
@@ -87,9 +97,10 @@ async def list_traders(db: Session = Depends(get_db)):
     try:
         result = await db.execute(select(models.Trader))
         db_traders = result.scalars().all()
+        print(f"Fetched traders from database: {db_traders}")
         return [
             schemas.TraderResponse(
-                id=trader.id,
+                trader_id=trader.id,
                 name=trader.name,
                 trader_type=trader.trader_type,
                 balance=trader.balance,

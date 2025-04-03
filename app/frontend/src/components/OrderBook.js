@@ -1,9 +1,9 @@
 import React, { useEffect, useState, useContext } from "react";
 import { WebSocketContext } from "./WebSocketContext";
 
-const OrderBook = () => {
+const MyOrderBook = () => {
     const context = useContext(WebSocketContext);
-    const { bids, asks, midPrice} = useContext(WebSocketContext);
+    const { bids, asks, mid_price, ohlc} = useContext(WebSocketContext);
 
     if (!context) {
         console.error("WebSocketContext is not available!");
@@ -31,7 +31,7 @@ const OrderBook = () => {
 
             {/* Last Price (Middle) */}
             <div className="orderbook-last-price">
-                <span className="mark-price">Mark: {(midPrice || 0).toFixed(2)}</span>
+                <span className="mark-price">Mark: {(mid_price || 0).toFixed(2)}</span>
             </div>
 
             {/* Bids (Buy Orders) */}
@@ -48,4 +48,4 @@ const OrderBook = () => {
     );
 };
 
-export default OrderBook;
+export default MyOrderBook;

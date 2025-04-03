@@ -7,7 +7,7 @@ export const WebSocketContext = createContext(null);
 export const WebSocketProvider = ({ children }) => {
     const [bids, setBids] = useState([]);
     const [asks, setAsks] = useState([]);
-    const [midPrice, setMidPrice] = useState(0);
+    const [mid_price, setMidPrice] = useState(0);
     const [ohlc, setOhlc] = useState([]);
     const [time, setTime] = useState(0);
     const [isConnected, setIsConnected] = useState(false);
@@ -31,7 +31,7 @@ export const WebSocketProvider = ({ children }) => {
             
                     setBids(data.bids || []);
                     setAsks(data.asks || []);
-                    setMidPrice(data.midPrice || 0);
+                    setMidPrice(data.mid_price || 0);
                     setTime(data.time || 0);
 
                     if (data.OHLC) {
@@ -69,7 +69,7 @@ export const WebSocketProvider = ({ children }) => {
     }, []);
 
     return (
-        <WebSocketContext.Provider value={{ bids, asks, midPrice, ohlc, time }}>
+        <WebSocketContext.Provider value={{ bids, asks, mid_price, ohlc, time }}>
             {children}
         </WebSocketContext.Provider>
     );
