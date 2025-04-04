@@ -9,6 +9,7 @@ from .routers import trader
 from .trader_manager import traderManager
 from .routers import order
 from .database import engine, init_db, SessionLocal
+from .redis import init_redis
 import logging
 
 logging.basicConfig(
@@ -37,6 +38,7 @@ async def add_initial_traders():
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     await init_db()
+    await init_redis()
     await add_initial_traders()
     await traderManager.start() 
     yield

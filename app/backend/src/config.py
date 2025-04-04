@@ -16,6 +16,7 @@ class Settings(BaseSettings):
     influxdb_org: str
     influxdb_bucket: str
     influxdb_admin_token: str
+    redis_host_url: str
 
 
     class Config:

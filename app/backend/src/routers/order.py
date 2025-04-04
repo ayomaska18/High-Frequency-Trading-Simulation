@@ -9,6 +9,7 @@ from ..database import get_db
 from sqlalchemy.orm import Session
 from sqlalchemy.future import select
 from ..pubsub import subscribe
+from ..redis import enqueue_order
 import time
 
 router = APIRouter(
@@ -77,19 +78,20 @@ async def execute_order(order:schemas.OrderCreate, db: Session = Depends(get_db)
     try:
         new_order = models.Order(**order.model_dump())
 
-        if new_order.order_type == "market":
-            message = order_book.market_order_match(new_order)
-        elif new_order.order_type == "limit":
-            message = order_book.limit_order_match(new_order)
-        elif new_order.order_type == "cancel":
-            message = order_book.cancel_order(new_order)
-        else:
-            raise HTTPException(status_code=400, detail="Invalid order type")
-        
-        if message == 'Insufficient Liquidity to fill order':
-            raise HTTPException(status_code=400, detail="Insufficient Liquidity to fill order")
+        order_data = {
+            "id": new_order.id,
+            "trader_id": new_order.trader_id,
+            "asset": new_order.asset,
+            "is_buy": new_order.is_buy,
+            "price": new_order.price,
+            "vol": new_order.vol,
+            "order_type": new_order.order_type,
+            "timestamp": new_order.timestamp.isoformat() if hasattr(new_order.timestamp, "isoformat") else new_order.timestamp,
+        }
 
-        return message
+        await enqueue_order(order_data)
+
+        return {"message": "Order has been received successfully."}
     
     except Exception as e:
         await db.rollback()

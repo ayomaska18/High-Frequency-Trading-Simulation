@@ -7,6 +7,7 @@ services:
     depends_on:
       - postgres
       - influxdb
+      - redis
     ports:
       - "8000:8000"
     environment:
@@ -63,3 +64,8 @@ services:
       DOCKER_INFLUXDB_INIT_ADMIN_TOKEN: ${INFLUXDB_ADMIN_TOKEN}
     env_file:
       - .env
+  
+  redis:
+    image: redis:latest
+    ports:
+      - "6379:6379"
