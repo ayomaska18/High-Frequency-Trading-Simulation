@@ -24,6 +24,18 @@ async def dequeue_order(timeout: int = 0) -> dict:
         return json.loads(result[1])
     return None
 
+async def cache_order(order_id: int, order_data: dict, ttl: int = 3600):
+    key = f"order:{order_id}"
+    order_json = json.dumps(order_data)
+    await redis_client.set(key, order_json, ex=ttl)
+
+async def get_cached_order(order_id: int) -> dict:
+    key = f"order:{order_id}"
+    data = await redis_client.get(key)
+    if data:
+        return json.loads(data)
+    return None
+
 async def process_orders():
     while True:
         try:

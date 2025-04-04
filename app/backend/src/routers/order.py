@@ -9,7 +9,7 @@ from ..database import get_db
 from sqlalchemy.orm import Session
 from sqlalchemy.future import select
 from ..pubsub import subscribe
-from ..redis import enqueue_order
+from ..redis import enqueue_order, cache_order
 import time
 
 router = APIRouter(
@@ -88,7 +88,7 @@ async def execute_order(order:schemas.OrderCreate, db: Session = Depends(get_db)
             "order_type": new_order.order_type,
             "timestamp": new_order.timestamp.isoformat() if hasattr(new_order.timestamp, "isoformat") else new_order.timestamp,
         }
-
+        await cache_order(new_order.id, order_data)
         await enqueue_order(order_data)
 
         return {"message": "Order has been received successfully."}
