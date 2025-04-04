@@ -1,6 +1,6 @@
 # High-Frequency-Trading-Simulation
 
-This project implements a high-performance, asynchronous trading engine designed to simulate market trading with various automated trader types. The engine features an order book with market and limit order matching, a range of trader strategies, real-time data streaming via websockets, and persistent storage with PostgreSQL and InfluxDB.
+This project implements a high-performance, asynchronous trading engine designed to simulate market trading with various automated trader types. The engine features an order book with market and limit order matching, a range of trader strategies, real-time data streaming via websockets, redis for order processing and caching, and persistent storage with PostgreSQL and InfluxDB.
 
 
 ![螢幕擷取畫面 2025-04-03 005612](https://github.com/user-attachments/assets/387dc58b-ff09-42f2-9eed-2a5c0bfc00e4)
@@ -22,6 +22,10 @@ This project implements a high-performance, asynchronous trading engine designed
 - **Configuration & Environment Management:**  
   Configuration is handled via Pydantic settings with support for environment variables, allowing flexible deployment setups
 
+- **Redis Integration**  
+  Integrated Redis queue to handle user trade execution requests asynchronously, ensuring sequential order processing and preventing data loss, Implemented Redis caching to store frequently accessed data,   
+  improving performance and reducing database load
+  
 ## Architecture Overview
 
 - **Core Components:**  
@@ -82,6 +86,9 @@ This project implements a high-performance, asynchronous trading engine designed
    # PG Admin
    PGADMIN_DEFAULT_EMAIL=your_pgadmin_email
    PGADMIN_DEFAULT_PASSWORD=your_pg_default_password
+
+   # Redis
+   REDIS_HOST_URL=your_redis_url
    
    ```
 
@@ -115,6 +122,7 @@ fyp/
 │   │   │   ├── routers/  # API routes
 │   │   │   ├── models/   # Database models
 │   │   │   ├── trader_manager.py
+│   │   │   ├── redis.py # Redis cache and queue
 │   │   │   ├── orderbook.py
 │   │   │   └── main.py
 │   ├── frontend/         # Frontend application (React)
