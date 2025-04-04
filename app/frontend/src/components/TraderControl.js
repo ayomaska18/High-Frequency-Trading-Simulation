@@ -9,6 +9,7 @@ const TraderControls = () => {
     const [bearCount, setBearCount] = useState(0);
     const [marketMakerCount, setMarketMakerCount] = useState(0);
     const [noiseTraderCount, setNoiseTraderCount] = useState(0);
+    const [realTrader, setReadTrader] = useState(null);
     const [traderCounters, setTraderCounters] = useState({
         bull: 0,
         bear: 0,
@@ -53,37 +54,38 @@ const TraderControls = () => {
 
     const removeTrader = async (type) => {
         try {
-            await axios.delete(API_URL, { data: { name: type } });
+            await axios.delete(`${API_URL}/${type}`);
             fetchTraders();
         } catch (error) {
             console.error("Error removing trader:", error);
         }
     };
 
-    const createRealTrader = async () => {
-        try {
-            const response = await axios.post(`${API_URL}/real`, {
-                name: "client",
-                trader_type: "client",
-                balance: 1000.0,
-                is_bot: false,
-            });
-            console.log("Real trader created:", response.data);
-        } catch (error) {
-            console.error("Error creating real trader:", error);
-        }
-    };
+    // const createRealTrader = async () => {
+    //     try {
+    //         const response = await axios.post(`${API_URL}/real`, {
+    //             name: "client",
+    //             trader_type: "client",
+    //             balance: 1000.0,
+    //             is_bot: false,
+    //         });
+    //         console.log("Real trader created:", response.data);
+    //     } catch (error) {
+    //         console.error("Error creating real trader:", error);
+    //     }
+    // };
 
     useEffect(() => {
-        createRealTrader();
         fetchTraders();
+        // createRealTrader();
     }, []);
 
     useEffect(() => {
-        const bullCount = traders.filter(t => t.type === "bull").length;
-        const bearCount = traders.filter(t => t.type === "bear").length;
-        const marketMakerCount = traders.filter(t => t.type === "mm").length;
-        const noiseTraderCount = traders.filter(t => t.type === "noise").length;
+        const bullCount = traders.filter(t => t.trader_type === "bull").length;
+        const bearCount = traders.filter(t => t.trader_type === "bear").length;
+        const marketMakerCount = traders.filter(t => t.trader_type === "mm").length;
+        const noiseTraderCount = traders.filter(t => t.trader_type === "noise").length;
+        // const realTrader = traders.find(t => t.trader_type === "client");
 
         setBullCount(bullCount);
         setBearCount(bearCount);

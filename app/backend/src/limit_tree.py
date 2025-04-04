@@ -113,6 +113,9 @@ class LimitTree:
     
     def get_worst_limit(self):
         return self.worst_limit
+    
+    def get_limit(self, price):
+        return self.limit_map.get(price)
 
 def print_tree_info(title, tree: LimitTree):
     print(f"--- {title} ---")
