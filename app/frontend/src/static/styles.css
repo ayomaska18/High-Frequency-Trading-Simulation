@@ -17,6 +17,20 @@
     display: flex;
     width: 100%;
     justify-content: space-around;
+    gap: 20px;
+}
+
+.chart-and-trades {
+    display: flex;
+    flex-direction: row;
+    gap: 20px;
+    width: 70%;
+    height: 500px;
+}
+
+.trader-orders-container {
+    margin-top: 20px;
+    width: 100%;
 }
 
 .controls-container {
@@ -27,18 +41,3 @@
     width: 80%;
     text-align: center;
 }
-
-.control-group {
-    margin-bottom: 10px;
-}
-
-label {
-    margin-right: 10px;
-}
-
-.large-chart {
-    width: 70vw;
-    height: 500px;
-}
-
-

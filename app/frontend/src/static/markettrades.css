@@ -1,0 +1,44 @@
+.market-trades-container {
+    width: 300px;
+    height: 100%;
+    background: black;
+    color: white;
+    font-family: Arial, sans-serif;
+    border: 1px solid #333;
+    padding: 10px;
+    overflow-y: auto;
+}
+
+.trades-list {
+    display: flex;
+    flex-direction: column;
+    gap: 5px;
+}
+
+.trade {
+    display: flex;
+    justify-content: space-between;
+    padding: 5px;
+    font-size: 14px;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.trade.buy {
+    background: rgba(0, 255, 0, 0.1);
+}
+
+.trade.sell {
+    background: rgba(255, 0, 0, 0.1);
+}
+
+.trade-asset {
+    flex: 1;
+    text-align: left;
+}
+
+.trade-price,
+.trade-volume,
+.trade-type {
+    flex: 1;
+    text-align: right;
+}

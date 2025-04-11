@@ -13,7 +13,7 @@ const TradingChart = () => {
         if (!chartContainerRef.current) return;
 
         const chartOptions = {
-            width: 1190,
+            width: 800,
             height: 522,
             layout: { background: {type:'solid', color:'black'}, textColor: 'white' },
             grid: { vertLines: { color: "#333" }, horzLines: { color: "#333" } },

@@ -29,3 +29,12 @@ class Order(Base):
     timestamp = Column(DateTime, default=datetime.now(timezone.utc))
     order_type = Column(String, nullable=False)
     trader = relationship("Trader", back_populates="orders")
+
+class Holding(Base):
+    __tablename__ = "holdings"
+
+    trader_id = Column(Integer, ForeignKey("traders.id"), primary_key=True)
+    asset = Column(String, primary_key=True)
+    amount = Column(Float, default=0.0)
+    avg_price = Column(Float, default=0.0)
+    updated_at = Column(DateTime, default=datetime.now(timezone.utc))

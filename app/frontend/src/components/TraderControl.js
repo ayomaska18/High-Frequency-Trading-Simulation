@@ -9,7 +9,6 @@ const TraderControls = () => {
     const [bearCount, setBearCount] = useState(0);
     const [marketMakerCount, setMarketMakerCount] = useState(0);
     const [noiseTraderCount, setNoiseTraderCount] = useState(0);
-    const [realTrader, setReadTrader] = useState(null);
     const [traderCounters, setTraderCounters] = useState({
         bull: 0,
         bear: 0,
@@ -60,20 +59,6 @@ const TraderControls = () => {
             console.error("Error removing trader:", error);
         }
     };
-
-    // const createRealTrader = async () => {
-    //     try {
-    //         const response = await axios.post(`${API_URL}/real`, {
-    //             name: "client",
-    //             trader_type: "client",
-    //             balance: 1000.0,
-    //             is_bot: false,
-    //         });
-    //         console.log("Real trader created:", response.data);
-    //     } catch (error) {
-    //         console.error("Error creating real trader:", error);
-    //     }
-    // };
 
     useEffect(() => {
         fetchTraders();

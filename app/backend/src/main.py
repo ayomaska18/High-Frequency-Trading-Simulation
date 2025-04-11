@@ -10,6 +10,7 @@ from .trader_manager import traderManager
 from .routers import order
 from .database import engine, init_db, SessionLocal
 from .redis import init_redis
+from .routers import holding
 import logging
 
 logging.basicConfig(
@@ -58,6 +59,7 @@ app.add_middleware(
 app.include_router(orderbook.router)
 app.include_router(trader.router)
 app.include_router(order.router)
+app.include_router(holding.router)
 
 traders = []
 

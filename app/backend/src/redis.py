@@ -1,9 +1,14 @@
 import json
 import redis.asyncio as redis 
 import asyncio
+from datetime import datetime, timezone
 from fastapi import HTTPException
 from .orderbook import order_book
 from .config import settings
+from .database import get_db
+from sqlalchemy.future import select
+from .models import Holding
+from .pubsub import publish
 
 ORDER_QUEUE_KEY = "order_queue"
 redis_pool = None
@@ -40,6 +45,14 @@ async def process_orders():
     while True:
         try:
             order_data = await dequeue_order()
+
+            holding_data = {
+                "trader_id": order_data.trader_id,
+                "asset": order_data.asset,
+                "price": order_data.price,
+                "amount": order_data.volume,
+            }
+            
             if order_data:
                 if order_data['order_type'] == "market":
                     message = order_book.market_order_match(order_data)
@@ -54,6 +67,52 @@ async def process_orders():
                     raise HTTPException(status_code=400, detail="Insufficient Liquidity to fill order")
                 
                 print("Processed order:", message)
+
+                # publish(order_data)
+
+                async with get_db() as db:
+                    await update_holdings(holding_data, db)
         except Exception as e:
             print(f"Error processing order: {e}")
         await asyncio.sleep(0.1)
+
+async def update_holdings(order_data: dict, db):
+    try:
+        result = await db.execute(
+            select(Holding).filter(
+                Holding.trader_id == order_data["trader_id"],
+                Holding.asset == order_data["asset"]
+            )
+        )
+        holding = result.scalars().first()
+
+        if holding:
+            total_amount = holding.amount + (order_data["volume"] if order_data["is_buy"] else -order_data["volume"])
+            if total_amount < 0:
+                raise HTTPException(status_code=400, detail="Insufficient holdings to sell")
+
+            if order_data["is_buy"]:
+                total_cost = (holding.amount * holding.avg_price) + (order_data["volume"] * order_data["price"])
+                avg_price = total_cost / total_amount
+                holding.avg_price = avg_price
+
+            holding.amount = total_amount
+            holding.updated_at = datetime.now(timezone.utc)
+        else:
+            if order_data["is_buy"]:
+                new_holding = Holding(
+                    trader_id=order_data["trader_id"],
+                    asset=order_data["asset"],
+                    amount=order_data["volume"],
+                    avg_price=order_data["price"],
+                    updated_at=datetime.now(timezone.utc)
+                )
+                db.add(new_holding)
+            else:
+                raise HTTPException(status_code=400, detail="Cannot sell an asset that is not held")
+
+        await db.commit()
+    except Exception as e:
+        await db.rollback()
+        print(f"Error updating holdings: {e}")
+        raise HTTPException(status_code=500, detail=f"Error updating holdings: {e}")

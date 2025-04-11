@@ -71,6 +71,8 @@ class Trader:
             timestamp=time.time(),
         )
 
+        print('place limit order')
+
         message = self.order_book.limit_order_match(order)
 
         print('status', message['status'])
@@ -165,7 +167,7 @@ class Trader:
             print('canceled excess order')
 
 class Client(Trader):
-    def __init__(self, trader_id, name, order_book, is_bot, max_position=15, max_vol = 1):
+    def __init__(self, trader_id, name, order_book, is_bot, max_position=15, max_vol = 100):
         super().__init__(
             trader_id = trader_id,
             name = name,

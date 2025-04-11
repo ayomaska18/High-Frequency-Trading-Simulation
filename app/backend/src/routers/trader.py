@@ -125,7 +125,7 @@ async def get_trader(trader_id: int, db: Session = Depends(get_db)):
             raise HTTPException(status_code=404, detail="Trader not found")
 
         return schemas.TraderResponse(
-            id=db_trader.id,
+            trader_id=db_trader.id,
             name=db_trader.name,
             trader_type=db_trader.trader_type,
             balance=db_trader.balance,

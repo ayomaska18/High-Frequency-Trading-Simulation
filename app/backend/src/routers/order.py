@@ -11,6 +11,7 @@ from sqlalchemy.future import select
 from ..pubsub import subscribe
 from ..redis import enqueue_order, cache_order
 import time
+import datetime
 
 router = APIRouter(
     prefix="/order",
@@ -20,29 +21,12 @@ router = APIRouter(
 @router.websocket("/ws/{trader_id}")
 async def websocket_endpoint(websocket: WebSocket, trader_id: int, db: Session = Depends(get_db)):
     await websocket.accept()
-    queue = await subscribe(trader_id)
+    queue = subscribe(trader_id)
 
     try:
         while True:
             message = await queue.get()
-            order = schemas.OrderBase(**message)
-
-            db_order = models.Order(
-                id=order.id,
-                trader_id=order.trader_id,
-                asset=order.asset,
-                is_buy=order.is_buy,
-                price=order.price,
-                order_type=order.order_type,
-                volume=order.volume,
-                timestamp=int(time.time())
-            )
-
-            db.add(db_order)
-            await db.commit()
-            await db.refresh(db_order)
-
-            await websocket.send_json(jsonable_encoder(order)) 
+            await websocket.send_json(jsonable_encoder(message))
     except WebSocketDisconnect:
         print(f"[WebSocket] Trader {trader_id} disconnected")
     except Exception as e:
@@ -58,7 +42,7 @@ async def get_order(trader_id: int, db: Session = Depends(get_db)):
             raise HTTPException(status_code=404, detail=f"No orders found for trader ID {trader_id}")
 
         return [
-            schemas.OrderBase(
+            schemas.OrderGet(
                 id=order.id,
                 trader_id=order.trader_id,
                 asset=order.asset,
@@ -76,7 +60,21 @@ async def get_order(trader_id: int, db: Session = Depends(get_db)):
 @router.post("/", status_code=status.HTTP_201_CREATED)
 async def execute_order(order:schemas.OrderCreate, db: Session = Depends(get_db)):
     try:
-        new_order = models.Order(**order.model_dump())
+        timestamp = datetime.datetime.now()
+
+        new_order = models.Order(
+            trader_id=order.trader_id,
+            asset=order.asset,
+            is_buy=order.is_buy,
+            price=order.price,
+            volume=order.volume,
+            order_type=order.order_type,
+            timestamp=timestamp,  # Use backend-generated timestamp
+        )
+
+        db.add(new_order)
+        await db.commit()
+        await db.refresh(new_order)
 
         order_data = {
             "id": new_order.id,
@@ -84,12 +82,49 @@ async def execute_order(order:schemas.OrderCreate, db: Session = Depends(get_db)
             "asset": new_order.asset,
             "is_buy": new_order.is_buy,
             "price": new_order.price,
-            "vol": new_order.vol,
+            "volume": new_order.volume,
             "order_type": new_order.order_type,
-            "timestamp": new_order.timestamp.isoformat() if hasattr(new_order.timestamp, "isoformat") else new_order.timestamp,
+            "timestamp": new_order.timestamp.isoformat(),
         }
+    
         await cache_order(new_order.id, order_data)
         await enqueue_order(order_data)
+
+        result = await db.execute(
+            select(models.Holding).filter(
+                models.Holding.trader_id == order.trader_id,
+                models.Holding.asset == order.asset
+            )
+        )
+        holding = result.scalars().first()
+
+        if holding:
+            total_amount = holding.amount + (order.volume if order.is_buy else -order.volume)
+            if total_amount < 0:
+                raise HTTPException(status_code=400, detail="Insufficient holdings to sell")
+
+            if order.is_buy:
+                total_cost = (holding.amount * holding.avg_price) + (order.volume * order.price)
+                avg_price = total_cost / total_amount
+                holding.avg_price = avg_price
+
+            holding.amount = total_amount
+            holding.updated_at = timestamp
+        else:
+            if order.is_buy:
+                new_holding = models.Holding(
+                    trader_id=order.trader_id,
+                    asset=order.asset,
+                    amount=order.volume,
+                    avg_price=order.price,
+                    updated_at=timestamp
+                    )
+                db.add(new_holding)
+            else:
+                raise HTTPException(status_code=400, detail="Cannot sell an asset that is not held")
+
+        await db.commit()
+        
 
         return {"message": "Order has been received successfully."}
     
