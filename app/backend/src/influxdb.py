@@ -14,12 +14,10 @@ INFLUXDB_ORG = os.getenv("INFLUXDB_ORG")
 INFLUXDB_BUCKET = os.getenv("INFLUXDB_BUCKET")  
 
 async def write_to_influxdb(timestamp: str, ohlc: dict, currency: str):
-    async with InfluxDBClientAsync(url=INFLUXDB_URL, token=INFLUXDB_TOKEN, org=INFLUXDB_ORG) as client:
-        
+    async with InfluxDBClientAsync(url=INFLUXDB_URL, token=INFLUXDB_TOKEN, org=INFLUXDB_ORG) as client:  
         write_api = client.write_api()
-        
         point = (
-            Point("ohlc")
+            Point("ohlc").time(timestamp, write_precision="ms")
             .tag("currency", currency)
             .field("open", ohlc.get("open"))
             .field("high", ohlc.get("high"))
@@ -27,5 +25,4 @@ async def write_to_influxdb(timestamp: str, ohlc: dict, currency: str):
             .field("close", ohlc.get("close"))
             .time(timestamp)
         )
-        
         await write_api.write(bucket=INFLUXDB_BUCKET, org=INFLUXDB_ORG, record=point)

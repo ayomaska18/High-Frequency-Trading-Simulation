@@ -39,9 +39,10 @@ const TradingChart = () => {
                 high: candle.high,
                 low: candle.low,
                 close: candle.close,
-                time: candle.time
+                time: Math.floor(candle.time / 60) * 60
             }));
-            series.setData(formattedData);
+            const sortedData = formattedData.sort((a, b) => a.time - b.time);
+            series.setData(sortedData);
         }
     }, [ohlc, series]);
 

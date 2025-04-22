@@ -7,7 +7,6 @@ from .trader import *
 from .orderbook import order_book
 
 
-
 class TraderManager:
     def __init__(self):
         self.traders: Dict[Type[Trader], List[Trader]] = {
@@ -167,7 +166,7 @@ class TraderManager:
     async def _trader_task(self, trader: Trader):
         while True:
             try:
-                trader.trade()
+                trader.trade("BTC")
                 await asyncio.sleep(0.25)
             except asyncio.CancelledError:
                 break

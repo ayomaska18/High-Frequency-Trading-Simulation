@@ -26,6 +26,7 @@ async def websocket_endpoint(websocket: WebSocket, trader_id: int, db: Session =
     try:
         while True:
             message = await queue.get()
+            print('message')
             await websocket.send_json(jsonable_encoder(message))
     except WebSocketDisconnect:
         print(f"[WebSocket] Trader {trader_id} disconnected")

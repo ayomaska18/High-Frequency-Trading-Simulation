@@ -21,13 +21,13 @@ class Limit:
         self.total_volume += order.vol
 
     def remove(self, order: Order):
-        if order.prev and order.next: # if order is in the middle
+        if order.prev and order.next:
             order.prev.next = order.next
             order.next.prev = order.prev
-        elif order.prev: # if order is the tail
+        elif order.prev:
             order.prev.next = None
             self.order_tail = order.prev
-        elif order.next: # if order is the head
+        elif order.next: 
             order.next.prev = None
             self.order_head = order.next
         else:

@@ -13,15 +13,6 @@ from .redis import init_redis
 from .routers import holding
 import logging
 
-logging.basicConfig(
-    level=logging.INFO,  # Set the logging level (DEBUG, INFO, WARNING, ERROR, CRITICAL)
-    format="%(asctime)s - %(name)s - %(levelname)s - %(message)s",  # Log format
-    handlers=[
-        logging.StreamHandler(),  # Log to console
-        logging.FileHandler("app.log"),  # Log to a file
-    ],
-)
-
 logger = logging.getLogger("TraderManager")
 
 async def add_initial_traders():

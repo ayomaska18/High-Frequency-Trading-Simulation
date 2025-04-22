@@ -6,8 +6,12 @@ const MarketTrades = ({traderId}) => {
     const [trades, setTrades] = useState([]);
 
     useEffect(() => {
-        if (!traderId) return;
-
+        if (!traderId){
+            console.log('no trader id provided')
+            return;
+        }
+            
+        
         const ws = new WebSocket(`${ORDER_WEBSOCKET_URL}/${traderId}`);
 
         ws.onopen = () => {
@@ -16,7 +20,12 @@ const MarketTrades = ({traderId}) => {
 
         ws.onmessage = (event) => {
             try {
-                const newTrade = JSON.parse(event.data);
+                const newTrade = {
+                    ...JSON.parse(event.data),
+                    timestamp: Date.now() 
+                };
+
+                console.log(newTrade);
 
                 setTrades((prevTrades) => [newTrade, ...prevTrades].slice(0, 20));
             } catch (error) {
@@ -36,15 +45,25 @@ const MarketTrades = ({traderId}) => {
     return (
         <div className="market-trades-container">
             <h3>Market Trades</h3>
+            <div className="trade header">
+                <span className="trade-price"><strong>Price(USDT)</strong></span>
+                <span className="trade-volume"><strong>Amount(BTC)</strong></span>
+                <span className="trade-time"><strong>Time</strong></span>
+            </div>
             <div className="trades-list">
-                {trades.map((trade, index) => (
-                    <div key={index} className={`trade ${trade.is_buy ? "buy" : "sell"}`}>
-                        <span className="trade-asset">{trade.asset}</span>
-                        <span className="trade-price">{trade.price.toFixed(2)}</span>
-                        <span className="trade-volume">{trade.volume.toFixed(4)}</span>
-                        <span className="trade-type">{trade.is_buy ? "Buy" : "Sell"}</span>
-                    </div>
-                ))}
+            {trades.map((trade, index) => (
+                <div key={index} className={`trade ${trade.is_buy ? "buy" : "sell"}`}>
+                    <span className="trade-price">{Number(trade.price).toFixed(2)}</span>
+                    <span className="trade-volume">{Number(trade.volume).toFixed(4)}</span>
+                    <span className="trade-time">
+                        {new Date(trade.timestamp).toLocaleTimeString("en-GB", {
+                            hour: "2-digit",
+                            minute: "2-digit",
+                            second: "2-digit"
+                        })}
+                    </span>
+                </div>
+            ))}
             </div>
         </div>
     );

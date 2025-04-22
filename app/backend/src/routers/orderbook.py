@@ -21,10 +21,8 @@ async def get_order_book():
 async def websocket_endpoint(websocket: WebSocket):
     await websocket.accept()
     clients.add(websocket)
-
     prices = []
     window_start = time.time()
-
     try:
         while True:
             try:
@@ -53,13 +51,12 @@ async def websocket_endpoint(websocket: WebSocket):
                         "low": low_price,
                         "close": close_price
                     }
-
                     response = {
                         "bids": data["bids"],
                         "asks": data["asks"],
                         "mid_price": mid_price,
                         "OHLC": ohlc,
-                        "time": int(current_time)
+                        "time": int(current_time * 1000)
                     }
 
                     try:

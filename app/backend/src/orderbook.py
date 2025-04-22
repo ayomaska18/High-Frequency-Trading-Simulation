@@ -8,6 +8,7 @@ import time
 import random
 import requests
 import os
+import asyncio
 from IPython.display import display
 from dotenv import load_dotenv
 from .pubsub import publish
@@ -86,7 +87,7 @@ class OrderBook:
         result[node.price] = node.get_total_vol()
         self._inorder_traverse(node.right, result)
 
-    async def send_fill_event(message):
+    async def send_fill_event(self, message):
         await publish(message)
     
     def market_order_match(self, order):
@@ -94,7 +95,7 @@ class OrderBook:
         limit_tree = self.ask_tree if order.is_buy else self.bid_tree
         
         while limit_tree.limit_map and order.vol > 0:
-            best_limit_price = limit_tree.get_best_limit() # get best limit doubly linked list
+            best_limit_price = limit_tree.get_best_limit()
 
             best_limit = limit_tree.limit_map[best_limit_price]
 
@@ -110,46 +111,40 @@ class OrderBook:
                 head_order = best_limit.order_head
                 trade_quantity = min(order.vol, head_order.vol)
 
-                # Execute trade
                 order.vol -= trade_quantity
                 head_order.vol -= trade_quantity
 
-                # Cancel head order if filled
                 if head_order.vol <= 0:
                     self.cancel_order(head_order.id)
 
-                    if head_order.trader_id and not traderManager.get_trader_by_id(head_order.trader_id).is_bot:
-                        self.send_fill_event({
-                            "order_id": head_order.id,
-                            "asset": head_order.asset,
-                            "is_buy": head_order.is_buy,
-                            "trader_id": head_order.trader_id,
-                            "price": head_order.price,
-                            "volume": trade_quantity,
-                            "order_type": head_order.order_type,
-                        })
+                    asyncio.create_task(self.send_fill_event({
+                        "order_id": head_order.id,
+                        "asset": head_order.asset,
+                        "is_buy": head_order.is_buy,
+                        "trader_id": head_order.trader_id,
+                        "price": head_order.price,
+                        "volume": trade_quantity,
+                        "order_type": head_order.order_type,
+                    }))
 
-                # Notify market order trader
-                if order.vol == 0 and order.trader_id and not traderManager.get_trader_by_id(order.trader_id).is_bot:
-                    self.send_fill_event({
+                if order.vol == 0:
+                    asyncio.create_task(self.send_fill_event({
                         "order_id": order.id,
                         "asset": order.asset,
                         "is_buy": order.is_buy,
                         "trader_id": order.trader_id,
-                        "price": head_order.price,  # matched price
+                        "price": head_order.price,
                         "volume": trade_quantity,
                         "order_type": order.order_type,
-                    })
+                    }))
 
-            if not best_limit.order_head: # removed limit and change best limit
+            if not best_limit.order_head:
                 limit_tree.remove_limit(best_limit_price)
                 limit_tree.update_best_worst_price(best_limit_price)
 
-        
         if not limit_tree.limit_map and order.vol:
             print("Insufficient Liquidity to fill order")
             return {'status': 'Insufficient Liquidity to fill order'}    
-
         return {'status': 'Order Filled'}
             
     def limit_order_match(self, order: Order):
@@ -161,18 +156,7 @@ class OrderBook:
 
         while order.vol > 0 and limit_tree.limit_map:
             best_limit_price = limit_tree.get_best_limit() 
-            # if order.is_buy:
-            #     if limit_price < best_limit_price:
-            #         break
-            # else:
-            #     if limit_price > best_limit_price:
-            #         break
-
-            print("best_limit_price: ", best_limit_price)
-
             limit_node = limit_tree.get_limit(limit_price)
-
-            print("best_limit_node: ", limit_node)
 
             if not limit_node:
                 print(f"[Warning] Limit node for {limit_node.price} disappeared. Moving on. (limit order)")
@@ -191,34 +175,28 @@ class OrderBook:
                 order.vol -= trade_quantity
                 head_order.vol -= trade_quantity
 
-                # Cancel filled head order
                 if head_order.vol <= 0:
                     self.cancel_order(head_order.id)
-                    if head_order.trader_id and not traderManager.get_trader_by_id(head_order.trader_id).is_bot:
-                        self.send_fill_event({
-                            "order_id": head_order.id,
-                            "asset": head_order.asset,
-                            "is_buy": head_order.is_buy,
-                            "trader_id": head_order.trader_id,
-                            "price": head_order.price,
-                            "volume": trade_quantity,
-                            "order_type": head_order.order_type,
-                        })
-                
-                print('send limit order fill event 1')
+                    asyncio.create_task(self.send_fill_event({
+                        "order_id": head_order.id,
+                        "asset": head_order.asset,
+                        "is_buy": head_order.is_buy,
+                        "trader_id": head_order.trader_id,
+                        "price": head_order.price,
+                        "volume": trade_quantity,
+                        "order_type": head_order.order_type,
+                    }))
 
-                # Notify incoming order’s trader if fully filled
-                if order.vol == 0 and order.trader_id and not traderManager.get_trader_by_id(order.trader_id).is_bot:
-                    self.send_fill_event({
+                if order.vol == 0:
+                    asyncio.create_task(self.send_fill_event({
                         "order_id": order.id,
                         "asset": order.asset,
                         "is_buy": order.is_buy,
+                        "trader_id": order.trader_id,
                         "price": head_order.price,
                         "volume": trade_quantity,
                         "order_type": order.order_type,
-                    })
-                
-                print('send limit order fill event 2')
+                    }))
 
             if limit_node and not limit_node.order_head: # remove price level from ob
                 limit_tree.remove_limit(best_limit_price)

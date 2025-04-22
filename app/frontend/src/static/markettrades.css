@@ -16,29 +16,30 @@
 }
 
 .trade {
-    display: flex;
-    justify-content: space-between;
-    padding: 5px;
-    font-size: 14px;
-    border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+    display: grid;
+    grid-template-columns: 1fr 1fr 1fr;
+    font-size: 13px;
+    padding: 4px 0;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.05);
 }
 
-.trade.buy {
-    background: rgba(0, 255, 0, 0.1);
+.trade.buy .trade-price {
+    color: #03c988;
 }
 
-.trade.sell {
-    background: rgba(255, 0, 0, 0.1);
-}
-
-.trade-asset {
-    flex: 1;
-    text-align: left;
+.trade.sell .trade-price {
+    color: #f44336; 
 }
 
 .trade-price,
 .trade-volume,
-.trade-type {
-    flex: 1;
+.trade-time {
     text-align: right;
+    padding: 0 4px;
+}
+
+.trade.header {
+    border-bottom: 1px solid #444;
+    font-weight: bold;
+    color: #aaa;
 }

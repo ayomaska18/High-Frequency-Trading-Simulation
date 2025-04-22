@@ -15,15 +15,12 @@ class LimitTree:
 
         limit = Limit(price)
         self.limit_map[price] = limit
-
         if not self.root:
             self.root = limit
             self.best_limit = price
             self.worst_limit = price
             return limit
-
         current = self.root
-
         while True:
             if price < current.price:
                 if current.left:
@@ -39,14 +36,12 @@ class LimitTree:
                     current.right = limit
                     limit.parent = current
                     break
-
         if not self.is_bid_tree:
             self.best_limit = min(self.best_limit, price)
             self.worst_limit = max(self.worst_limit, price)
         else:
             self.best_limit = max(self.best_limit, price)
             self.worst_limit = min(self.worst_limit, price)
-
         return limit
 
     def remove_limit(self, price):

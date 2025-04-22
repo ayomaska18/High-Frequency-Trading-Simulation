@@ -1,7 +1,6 @@
 import React, { createContext, useEffect, useState } from "react";
 
 const ORDERBOOK_WEBSOCKET_URL = "ws://127.0.0.1:8000/orderbook/ws";
-// const ORDER_WEBSOCKET_URL = "ws://127.0.0.1:8000/orderbook/ws"
 
 export const WebSocketContext = createContext(null);
 

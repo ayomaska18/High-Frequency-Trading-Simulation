@@ -8,6 +8,7 @@ import MarketTrades from "./components/MarketTrades";
 import "./static/styles.css";
 import "./static/orderbook.css";
 import "./static/trader_panel.css";
+import "./static/markettrades.css";
 
 const App = () => {
     const [realTraderId, setRealTraderId] = useState(null);

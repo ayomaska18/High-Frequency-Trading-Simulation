@@ -15,8 +15,9 @@ class TraderResponse(TraderBase):
     trader_id: int
     orders: Optional[List["OrderResponse"]] = []
 
-    class Config:
-        orm_mode = True
+    model_config = {
+        "from_attributes": True
+    }
 
 class OrderBase(BaseModel):
     asset: str
@@ -30,8 +31,9 @@ class OrderBase(BaseModel):
 class OrderGet(OrderBase):
     id: int
 
-    class Config:
-        orm_mode = True
+    model_config = {
+        "from_attributes": True
+    }
 
 
 class OrderCreate(OrderBase):
@@ -42,8 +44,9 @@ class OrderResponse(BaseModel):
     message: str
     timestamp: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
 
-    class Config:
-        orm_mode = True
+    model_config = {
+        "from_attributes": True
+    }
 
 class HoldingBase(BaseModel):
     trader_id: int
